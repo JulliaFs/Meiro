@@ -1,31 +1,34 @@
-import { useEffect, useState } from "react";
-import { Download, Upload, Moon, Sun, Database } from "lucide-react";
+import { useState } from "react";
+import { Download, Upload, Moon, Sun, Database, LogOut } from "lucide-react";
 import { Card, CardHeader } from "../components/ui/Card";
-import { db } from "../db/database";
+import { supabase } from "../lib/supabaseClient";
+import { useAuthStore } from "../store/useAuthStore";
 import { useUiStore } from "../store/useUiStore";
 
 const TABLES = [
-  "faculdades", "fases", "capitulos", "areas", "cursos", "certificados",
-  "materiais", "arquivos", "anotacoes", "flashcards", "metas", "habilidades", "sessoes", "configuracoes",
+  "anos", "fases", "capitulos", "areas", "cursos", "modulos", "aulas", "certificados",
+  "materiais", "anotacoes", "flashcards", "metas", "habilidades", "sessoes",
 ] as const;
 
 export default function ConfiguracoesPage() {
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
-  const [nome, setNome] = useState("Estudante");
-
-  useEffect(() => {
-    db.configuracoes.get("default").then((c) => c && setNome(c.nome));
-  }, []);
+  const session = useAuthStore((s) => s.session);
+  const signOut = useAuthStore((s) => s.signOut);
+  const [nome, setNome] = useState((session?.user.user_metadata?.nome as string) ?? "");
+  const [salvando, setSalvando] = useState(false);
 
   async function salvarNome() {
-    await db.configuracoes.put({ id: "default", tema: theme, nome });
+    setSalvando(true);
+    await supabase.auth.updateUser({ data: { nome } });
+    setSalvando(false);
   }
 
   async function exportar() {
     const dump: Record<string, unknown> = {};
     for (const t of TABLES) {
-      dump[t] = await (db as any)[t].toArray();
+      const { data } = await supabase.from(t).select("*");
+      dump[t] = data ?? [];
     }
     const blob = new Blob([JSON.stringify(dump, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -38,14 +41,14 @@ export default function ConfiguracoesPage() {
   async function importar(file: File) {
     const text = await file.text();
     const dump = JSON.parse(text);
-    await db.transaction("rw", TABLES.map((t) => (db as any)[t]), async () => {
-      for (const t of TABLES) {
-        if (Array.isArray(dump[t])) {
-          await (db as any)[t].clear();
-          await (db as any)[t].bulkAdd(dump[t]);
-        }
-      }
-    });
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    for (const t of TABLES) {
+      const rows = dump[t];
+      if (!Array.isArray(rows) || rows.length === 0) continue;
+      const prepared = rows.map((r: Record<string, unknown>) => ({ ...r, user_id: userData.user!.id }));
+      await supabase.from(t).insert(prepared);
+    }
     alert("Backup importado com sucesso! Recarregue a página.");
   }
 
@@ -57,11 +60,14 @@ export default function ConfiguracoesPage() {
       </div>
 
       <Card>
-        <CardHeader title="Perfil" />
+        <CardHeader title="Perfil" subtitle={session?.user.email} />
         <div className="flex gap-2">
-          <input className="input" value={nome} onChange={(e) => setNome(e.target.value)} />
-          <button className="btn btn-primary" onClick={salvarNome}>Salvar</button>
+          <input className="input" placeholder="Seu nome" value={nome} onChange={(e) => setNome(e.target.value)} />
+          <button className="btn btn-primary" onClick={salvarNome} disabled={salvando}>Salvar</button>
         </div>
+        <button onClick={signOut} className="btn btn-secondary mt-3 text-red-500">
+          <LogOut size={14} /> Sair da conta
+        </button>
       </Card>
 
       <Card>
@@ -73,7 +79,7 @@ export default function ConfiguracoesPage() {
       </Card>
 
       <Card>
-        <CardHeader title="Backup de dados" subtitle="Seus dados ficam salvos localmente no navegador (IndexedDB). Exporte regularmente para não perder nada." />
+        <CardHeader title="Backup de dados" subtitle="Seus dados ficam salvos no Supabase, vinculados à sua conta. Exporte regularmente como segurança extra." />
         <div className="flex gap-2 flex-wrap">
           <button className="btn btn-secondary" onClick={exportar}><Download size={16} /> Exportar backup (.json)</button>
           <label className="btn btn-secondary cursor-pointer">
@@ -86,10 +92,9 @@ export default function ConfiguracoesPage() {
       <Card>
         <CardHeader title="Armazenamento" action={<Database size={18} className="text-text-muted" />} />
         <p className="text-sm text-text-muted">
-          Hoje todos os dados são armazenados localmente no seu navegador via IndexedDB, sem custo e sem backend.
-          A camada de serviços (<code className="bg-surface-2 px-1 rounded">src/services</code>) foi desenhada para que,
-          no futuro, seja possível trocar o IndexedDB por um banco Supabase (gratuito) sem precisar reescrever as
-          páginas da aplicação — apenas a implementação interna dos services mudaria.
+          Seus dados ficam em um banco PostgreSQL no Supabase, protegidos por autenticação e por políticas de
+          segurança (RLS) que garantem que só você acessa o seu conteúdo. Arquivos (PDF, DOCX, imagens) ficam no
+          Supabase Storage, também privados por usuário.
         </p>
       </Card>
     </div>

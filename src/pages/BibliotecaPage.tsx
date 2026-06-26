@@ -36,7 +36,7 @@ function UploadForm({ onClose }: { onClose: () => void }) {
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
       area,
       pasta,
-      arquivoId: arquivo.id,
+      arquivoId: arquivo.path,
       dataUpload: todayIso(),
     });
     onClose();
@@ -86,22 +86,14 @@ export default function BibliotecaPage() {
 
   async function abrirPreview(m: Material) {
     if (!m.arquivoId) return;
-    const arq = await arquivoService.get(m.arquivoId);
-    if (arq) {
-      setPreviewUrl(arquivoService.getObjectUrl(arq));
-      setPreview(m);
-    }
+    const url = await arquivoService.getSignedUrl(m.arquivoId);
+    setPreviewUrl(url);
+    setPreview(m);
   }
 
   async function baixar(m: Material) {
     if (!m.arquivoId) return;
-    const arq = await arquivoService.get(m.arquivoId);
-    if (!arq) return;
-    const url = arquivoService.getObjectUrl(arq);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = arq.nome;
-    a.click();
+    await arquivoService.download(m.arquivoId, m.titulo);
   }
 
   return (

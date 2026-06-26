@@ -39,7 +39,7 @@ export function CapituloDetailModal({
       titulo: file.name,
       tipo,
       tags: [],
-      arquivoId: arquivo.id,
+      arquivoId: arquivo.path,
       dataUpload: new Date().toISOString().slice(0, 10),
       origemTipo: "capitulo",
       origemId: capitulo.id,

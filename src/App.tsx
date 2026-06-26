@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./layout/AppLayout";
+import { ProtectedRoute } from "./layout/ProtectedRoute";
+import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import FaculdadePage from "./pages/FaculdadePage";
 import FasePage from "./pages/FasePage";
@@ -19,21 +21,24 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/faculdade" element={<FaculdadePage />} />
-          <Route path="/faculdade/:anoId/:faseId" element={<FasePage />} />
-          <Route path="/areas" element={<AreasPage />} />
-          <Route path="/cursos" element={<CursosPage />} />
-          <Route path="/cursos/:cursoId" element={<CursoDetailPage />} />
-          <Route path="/biblioteca" element={<BibliotecaPage />} />
-          <Route path="/anotacoes" element={<AnotacoesPage />} />
-          <Route path="/flashcards" element={<FlashcardsPage />} />
-          <Route path="/certificados" element={<CertificadosPage />} />
-          <Route path="/revisoes" element={<RevisoesPage />} />
-          <Route path="/carreira" element={<CarreiraPage />} />
-          <Route path="/metas" element={<MetasPage />} />
-          <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/faculdade" element={<FaculdadePage />} />
+            <Route path="/faculdade/:anoId/:faseId" element={<FasePage />} />
+            <Route path="/areas" element={<AreasPage />} />
+            <Route path="/cursos" element={<CursosPage />} />
+            <Route path="/cursos/:cursoId" element={<CursoDetailPage />} />
+            <Route path="/biblioteca" element={<BibliotecaPage />} />
+            <Route path="/anotacoes" element={<AnotacoesPage />} />
+            <Route path="/flashcards" element={<FlashcardsPage />} />
+            <Route path="/certificados" element={<CertificadosPage />} />
+            <Route path="/revisoes" element={<RevisoesPage />} />
+            <Route path="/carreira" element={<CarreiraPage />} />
+            <Route path="/metas" element={<MetasPage />} />
+            <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

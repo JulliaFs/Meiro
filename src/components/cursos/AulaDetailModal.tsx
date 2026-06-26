@@ -37,7 +37,7 @@ export function AulaDetailModal({
       titulo: file.name,
       tipo,
       tags: [],
-      arquivoId: arquivo.id,
+      arquivoId: arquivo.path,
       dataUpload: new Date().toISOString().slice(0, 10),
       origemTipo: "aula",
       origemId: aula.id,

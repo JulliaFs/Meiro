@@ -19,7 +19,7 @@ function CertificadoForm({ cert, onClose }: { cert?: Certificado; onClose: () =>
 
   async function uploadArquivo(file: File) {
     const a = await arquivoService.upload(file);
-    setArquivoId(a.id);
+    setArquivoId(a.path);
   }
 
   async function salvar() {
