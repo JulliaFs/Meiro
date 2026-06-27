@@ -123,13 +123,13 @@ body {
   background-color: var(--color-brand);
   background-image: var(--gradient-brand);
   background-size: 200% 200%;
-  background-position: 0% 50%;
+  background-position: 100% 50%;
   color: white;
   position: relative;
   transition: background-position var(--motion-slow) var(--ease-calm), filter var(--motion-fast) var(--ease-calm);
 }
 .btn-primary:hover {
-  background-position: 100% 50%;
+  background-position: 0% 50%;
   filter: brightness(1.03);
 }
 
