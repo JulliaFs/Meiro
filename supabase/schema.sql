@@ -279,3 +279,17 @@ with check (bucket_id = 'arquivos' and (storage.foldername(name))[1] = auth.uid(
 create policy "arquivos_delete_own"
 on storage.objects for delete
 using (bucket_id = 'arquivos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ---------- waitlist: captura de leads da landing page (sem autenticação) ----------
+create table if not exists waitlist_signups (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  created_at timestamptz not null default now()
+);
+
+alter table waitlist_signups enable row level security;
+
+create policy "waitlist_insert_anyone"
+on waitlist_signups for insert
+to anon, authenticated
+with check (true);

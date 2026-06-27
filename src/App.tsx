@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./layout/AppLayout";
 import { ProtectedRoute } from "./layout/ProtectedRoute";
+import { HomeGate } from "./layout/HomeGate";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import FaculdadePage from "./pages/FaculdadePage";
@@ -22,9 +23,15 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<HomeGate />}>
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route index element={<DashboardPage />} />
+            </Route>
+          </Route>
+        </Route>
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/" element={<DashboardPage />} />
             <Route path="/faculdade" element={<FaculdadePage />} />
             <Route path="/faculdade/:anoId/:faseId" element={<FasePage />} />
             <Route path="/areas" element={<AreasPage />} />
