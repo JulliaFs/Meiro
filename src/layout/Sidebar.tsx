@@ -117,9 +117,7 @@ function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?
 function Logo({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="flex items-center gap-2 px-4 h-14 border-b border-border shrink-0">
-      <div className="w-7 h-7 rounded-md bg-text flex items-center justify-center shrink-0">
-        <MeiroLogo size={16} />
-      </div>
+      <MeiroLogo size={28} />
       {!collapsed && <span className="font-semibold text-base text-text whitespace-nowrap">meiro</span>}
     </div>
   );

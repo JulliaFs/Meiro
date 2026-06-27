@@ -37,8 +37,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">
       <div className="card w-full max-w-sm p-6">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-10 h-10 rounded-xl bg-text flex items-center justify-center mb-3">
-            <MeiroLogo size={20} />
+          <div className="mb-3">
+            <MeiroLogo size={40} />
           </div>
           <h1 className="text-lg font-semibold">meiro</h1>
           <p className="text-text-muted text-sm mt-1 text-center">
