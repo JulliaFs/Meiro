@@ -321,3 +321,18 @@ create policy "waitlist_delete_authenticated"
 on waitlist_signups for delete
 to authenticated
 using (true);
+
+-- ---------- waitlist: checagem segura de aprovação para o cadastro (sem expor a tabela ao anon) ----------
+create or replace function is_waitlist_approved(check_email text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from waitlist_signups
+    where email = check_email and status = 'approved'
+  );
+$$;
+
+grant execute on function is_waitlist_approved(text) to anon, authenticated;

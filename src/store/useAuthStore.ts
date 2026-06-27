@@ -18,6 +18,13 @@ export const useAuthStore = create<AuthState>(() => ({
     return { error: error?.message ?? null };
   },
   signUp: async (email, password) => {
+    const { data: approved, error: checkError } = await supabase.rpc("is_waitlist_approved", {
+      check_email: email,
+    });
+    if (checkError) return { error: checkError.message };
+    if (!approved) {
+      return { error: "Este e-mail ainda não foi aprovado para o beta. Entre na lista de espera na página inicial." };
+    }
     const { error } = await supabase.auth.signUp({ email, password });
     return { error: error?.message ?? null };
   },
