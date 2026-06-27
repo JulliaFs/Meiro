@@ -17,6 +17,7 @@ import RevisoesPage from "./pages/RevisoesPage";
 import CarreiraPage from "./pages/CarreiraPage";
 import MetasPage from "./pages/MetasPage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
+import WaitlistPage from "./pages/WaitlistPage";
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/carreira" element={<CarreiraPage />} />
             <Route path="/metas" element={<MetasPage />} />
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+            <Route path="/waitlist" element={<WaitlistPage />} />
           </Route>
         </Route>
       </Routes>

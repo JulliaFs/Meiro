@@ -14,6 +14,7 @@ import {
   Target,
   Settings,
   LayoutDashboard,
+  UserPlus,
   X,
 } from "lucide-react";
 import { cls } from "../lib/utils";
@@ -56,7 +57,10 @@ const SECOES: { titulo: string; items: NavItem[] }[] = [
   },
   {
     titulo: "Sistema",
-    items: [{ to: "/configuracoes", label: "Configurações", icon: Settings }],
+    items: [
+      { to: "/waitlist", label: "Lista de Espera", icon: UserPlus },
+      { to: "/configuracoes", label: "Configurações", icon: Settings },
+    ],
   },
 ];
 

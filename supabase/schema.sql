@@ -293,3 +293,31 @@ create policy "waitlist_insert_anyone"
 on waitlist_signups for insert
 to anon, authenticated
 with check (true);
+
+-- ---------- waitlist: status de aprovação + acesso para o admin (usuário autenticado) ----------
+alter table waitlist_signups add column if not exists status text not null default 'pending';
+alter table waitlist_signups add column if not exists notes text;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'waitlist_signups_status_check') then
+    alter table waitlist_signups add constraint waitlist_signups_status_check
+      check (status in ('pending', 'approved', 'rejected'));
+  end if;
+end $$;
+
+create policy "waitlist_select_authenticated"
+on waitlist_signups for select
+to authenticated
+using (true);
+
+create policy "waitlist_update_authenticated"
+on waitlist_signups for update
+to authenticated
+using (true)
+with check (true);
+
+create policy "waitlist_delete_authenticated"
+on waitlist_signups for delete
+to authenticated
+using (true);
