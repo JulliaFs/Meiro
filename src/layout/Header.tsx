@@ -42,7 +42,7 @@ export function Header() {
           >
             <Search size={14} />
             <span className="flex-1 text-left">Buscar...</span>
-            <kbd className="text-2xs bg-surface px-1.5 py-0.5 rounded border border-border">Ctrl K</kbd>
+            <kbd className="label-mono bg-surface px-1.5 py-0.5 rounded border border-border">Ctrl K</kbd>
           </button>
           <button onClick={() => setSearchOpen(true)} className="md:hidden text-text-muted hover:text-text p-1.5 rounded-lg hover:bg-surface-2">
             <Search size={18} />

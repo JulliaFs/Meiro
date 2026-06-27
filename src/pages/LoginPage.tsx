@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { GraduationCap, Loader2 } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import { MeiroLogo } from "../components/common/MeiroLogo";
 
 export default function LoginPage() {
+  const session = useAuthStore((s) => s.session);
   const signIn = useAuthStore((s) => s.signIn);
   const signUp = useAuthStore((s) => s.signUp);
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -28,16 +31,18 @@ export default function LoginPage() {
     }
   }
 
+  if (session) return <Navigate to="/" replace />;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">
       <div className="card w-full max-w-sm p-6">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center text-white mb-3">
-            <GraduationCap size={20} />
+          <div className="w-10 h-10 rounded-xl bg-text flex items-center justify-center mb-3">
+            <MeiroLogo size={20} />
           </div>
-          <h1 className="text-lg font-semibold">JU Academy OS</h1>
+          <h1 className="text-lg font-semibold">meiro</h1>
           <p className="text-text-muted text-sm mt-1 text-center">
-            {mode === "login" ? "Entre para continuar sua jornada de estudos." : "Crie sua conta para começar."}
+            {mode === "login" ? "Do labirinto à clareza. Entre para continuar." : "Clareza para evoluir. Crie sua conta para começar."}
           </p>
         </div>
 

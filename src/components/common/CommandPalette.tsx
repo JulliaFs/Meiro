@@ -109,7 +109,7 @@ export function CommandPalette() {
                 placeholder="Digite um comando ou busque uma página..."
                 className="flex-1 bg-transparent outline-none text-sm py-1"
               />
-              <kbd className="text-2xs text-text-muted bg-surface-2 px-1.5 py-0.5 rounded">ESC</kbd>
+              <kbd className="label-mono bg-surface-2 px-1.5 py-0.5 rounded">ESC</kbd>
             </div>
             <div className="max-h-80 overflow-y-auto py-2">
               {filtradas.length === 0 && <p className="text-sm text-text-muted px-4 py-6 text-center">Nenhum comando encontrado.</p>}
@@ -118,7 +118,7 @@ export function CommandPalette() {
                 lastGroup = cmd.group;
                 return (
                   <div key={cmd.id}>
-                    {showGroup && <p className="text-2xs font-semibold text-text-muted px-4 pt-2 pb-1 uppercase tracking-wide">{cmd.group}</p>}
+                    {showGroup && <p className="label-mono px-4 pt-2 pb-1">{cmd.group}</p>}
                     <button
                       onClick={() => executar(cmd)}
                       onMouseEnter={() => setActiveIdx(idx)}

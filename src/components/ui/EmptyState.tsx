@@ -7,7 +7,7 @@ export function EmptyState({ icon, title, description, action }: { icon?: ReactN
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="flex flex-col items-center justify-center text-center py-16 px-6 gap-2"
+      className="flex flex-col items-center justify-center text-center h-full py-8 px-6 gap-2"
     >
       {icon && (
         <div className="w-14 h-14 rounded-2xl bg-brand-light text-brand flex items-center justify-center mb-2">

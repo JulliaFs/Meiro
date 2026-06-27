@@ -20,7 +20,6 @@ import {
 } from "../hooks/useLiveData";
 import { habilidadeService } from "../services";
 import { computeSkillStats } from "../lib/skillsStats";
-import { categoriaStyle } from "../lib/categories";
 import type { Habilidade } from "../types";
 
 function HabilidadeForm({ hab, onClose }: { hab?: Habilidade; onClose: () => void }) {
@@ -107,9 +106,9 @@ export default function CarreiraPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <MetricCard label="Dias consecutivos" value={`${streak} 🔥`} icon={Flame} color="#ea580c" bg="rgba(234,88,12,0.12)" />
-        <MetricCard label="Conteúdos estudados" value={conteudosEstudados} icon={BookMarked} color={categoriaStyle("skills").color} bg={categoriaStyle("skills").backgroundColor} />
-        <MetricCard label="Certificados" value={certificados?.length ?? 0} icon={Award} color={categoriaStyle("certificados").color} bg={categoriaStyle("certificados").backgroundColor} />
+        <MetricCard label="Dias consecutivos" value={`${streak}`} icon={Flame} />
+        <MetricCard label="Conteúdos estudados" value={conteudosEstudados} icon={BookMarked} />
+        <MetricCard label="Certificados" value={certificados?.length ?? 0} icon={Award} />
         <MetricCard label="Horas acumuladas" value={`${horasAcumuladas.toFixed(1)}h`} icon={Clock} />
       </div>
 
@@ -141,13 +140,12 @@ export default function CarreiraPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {stats.map((s, i) => {
             const hab = habilidades?.find((h) => h.nome.toLowerCase() === s.nome.toLowerCase());
-            const cor = categoriaStyle("skills");
             return (
               <motion.div key={s.nome} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
                 <Card>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: cor.backgroundColor, color: cor.color }}>
+                      <div className="w-8 h-8 rounded-lg bg-brand-light text-brand flex items-center justify-center">
                         <BookMarked size={15} />
                       </div>
                       <CardHeader title={s.nome} subtitle={`${s.conteudosEstudados} conteúdo(s) estudado(s)`} />
@@ -162,7 +160,7 @@ export default function CarreiraPage() {
                   <div className="flex justify-between text-xs text-text-muted mb-1">
                     <span>Nível atual</span><span>{s.nivelAtual}%</span>
                   </div>
-                  <ProgressBar value={s.nivelAtual} color={cor.color} />
+                  <ProgressBar value={s.nivelAtual} />
                   <div className="flex gap-3 mt-3 text-xs text-text-muted">
                     <span className="flex items-center gap-1"><Clock size={12} /> {s.horasEstudadas.toFixed(1)}h</span>
                     <span className="flex items-center gap-1"><BookOpen size={12} /> {s.cursosRelacionados.length} curso(s)</span>

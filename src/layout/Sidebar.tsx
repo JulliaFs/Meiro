@@ -18,11 +18,14 @@ import {
 } from "lucide-react";
 import { cls } from "../lib/utils";
 import { useUiStore, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH } from "../store/useUiStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { MeiroLogo } from "../components/common/MeiroLogo";
 
 interface NavItem {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
+  end?: boolean;
 }
 
 const SECOES: { titulo: string; items: NavItem[] }[] = [
@@ -91,7 +94,7 @@ function NavRow({ to, label, icon: Icon, collapsed, end, onNavigate }: NavItem &
 function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   return (
     <nav className="flex-1 overflow-y-auto py-3 scrollbar-none">
-      <div className="mb-1">
+      <div className="mb-2 pb-2 border-b border-border">
         <NavRow to="/" label="Dashboard" icon={LayoutDashboard} collapsed={collapsed} end onNavigate={onNavigate} />
       </div>
 
@@ -114,10 +117,33 @@ function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?
 function Logo({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="flex items-center gap-2 px-4 h-14 border-b border-border shrink-0">
-      <div className="w-6 h-6 rounded-md bg-brand flex items-center justify-center text-white shrink-0">
-        <GraduationCap size={14} strokeWidth={2} />
+      <div className="w-7 h-7 rounded-md bg-text flex items-center justify-center shrink-0">
+        <MeiroLogo size={16} />
       </div>
-      {!collapsed && <span className="font-medium text-sm text-text whitespace-nowrap">JU Academy OS</span>}
+      {!collapsed && <span className="font-semibold text-base text-text whitespace-nowrap">meiro</span>}
+    </div>
+  );
+}
+
+function ProfileFooter({ collapsed }: { collapsed: boolean }) {
+  const session = useAuthStore((s) => s.session);
+  if (!session) return null;
+  const nome = (session.user.user_metadata?.nome as string) || session.user.email || "Conta";
+  const inicial = nome.charAt(0).toUpperCase();
+
+  return (
+    <div className="border-t border-border px-3 py-3 flex items-center gap-2.5 shrink-0">
+      <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-xs font-semibold shrink-0">
+        {inicial}
+      </div>
+      {!collapsed && (
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-text truncate">{nome}</p>
+          {session.user.email && session.user.email !== nome && (
+            <p className="label-mono truncate">{session.user.email}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -185,6 +211,7 @@ export function Sidebar() {
       >
         <Logo collapsed={collapsed} />
         <SidebarNav collapsed={collapsed} />
+        <ProfileFooter collapsed={collapsed} />
         {!collapsed && <ResizeHandle />}
       </aside>
 
@@ -213,6 +240,7 @@ export function Sidebar() {
                 </button>
               </div>
               <SidebarNav collapsed={false} onNavigate={() => setMobileNavOpen(false)} />
+              <ProfileFooter collapsed={false} />
             </motion.aside>
           </motion.div>
         )}
