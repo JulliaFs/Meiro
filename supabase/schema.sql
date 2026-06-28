@@ -336,3 +336,6 @@ as $$
 $$;
 
 grant execute on function is_waitlist_approved(text) to anon, authenticated;
+
+-- ---------- waitlist: registro de quando o convite foi enviado ----------
+alter table waitlist_signups add column if not exists invited_at timestamptz;
