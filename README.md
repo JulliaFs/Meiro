@@ -12,6 +12,19 @@
 
 ---
 
+## Telas
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/dashboard.png" alt="Dashboard" /><br /><sub><b>Dashboard</b> — o dia em uma tela: horas da semana, o que fazer agora e progresso. Tema claro.</sub></td>
+<td width="50%"><img src="docs/screenshots/mapa-de-carreira.png" alt="Mapa de Carreira" /><br /><sub><b>Mapa de Carreira</b> — radar de competências alimentado por faculdade, cursos e certificados.</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/command-palette.png" alt="Command palette" /><br /><sub><b>Command palette</b> (Ctrl K) — navegação e ações rápidas em qualquer tela.</sub></td>
+<td><img src="docs/screenshots/novo-curso.png" alt="Cadastro de curso" /><br /><sub><b>Cadastro de curso</b> — formulários em modal, sem tirar a pessoa do contexto.</sub></td>
+</tr>
+</table>
+
 ## O problema
 
 Estudante de graduação organiza a vida acadêmica em cinco lugares ao mesmo tempo:
