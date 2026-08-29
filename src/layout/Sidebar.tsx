@@ -27,6 +27,7 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   end?: boolean;
+  adminOnly?: boolean;
 }
 
 const SECOES: { titulo: string; items: NavItem[] }[] = [
@@ -58,7 +59,7 @@ const SECOES: { titulo: string; items: NavItem[] }[] = [
   {
     titulo: "Sistema",
     items: [
-      { to: "/waitlist", label: "Lista de Espera", icon: UserPlus },
+      { to: "/waitlist", label: "Lista de Espera", icon: UserPlus, adminOnly: true },
       { to: "/configuracoes", label: "Configurações", icon: Settings },
     ],
   },
@@ -96,13 +97,17 @@ function NavRow({ to, label, icon: Icon, collapsed, end, onNavigate }: NavItem &
 }
 
 function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+
   return (
     <nav className="flex-1 overflow-y-auto py-3 scrollbar-none">
       <div className="mb-2 pb-2 border-b border-border">
         <NavRow to="/" label="Dashboard" icon={LayoutDashboard} collapsed={collapsed} end onNavigate={onNavigate} />
       </div>
 
-      {SECOES.map((secao, idx) => (
+      {SECOES.map((secao) => ({ ...secao, items: secao.items.filter((i) => !i.adminOnly || isAdmin) }))
+        .filter((secao) => secao.items.length > 0)
+        .map((secao, idx) => (
         <div key={secao.titulo} className={cls(idx > 0 && "border-t border-border mt-2 pt-2")}>
           {!collapsed && (
             <p className="text-2xs text-text-muted/70 px-3.5 mb-1 mt-1 font-medium select-none">{secao.titulo}</p>

@@ -7,28 +7,18 @@ import { MeiroLogo } from "../components/common/MeiroLogo";
 export default function LoginPage() {
   const session = useAuthStore((s) => s.session);
   const signIn = useAuthStore((s) => s.signIn);
-  const signUp = useAuthStore((s) => s.signUp);
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setInfo(null);
     setLoading(true);
-    const result = mode === "login" ? await signIn(email, password) : await signUp(email, password);
+    const result = await signIn(email, password);
     setLoading(false);
-    if (result.error) {
-      setError(result.error);
-      return;
-    }
-    if (mode === "signup") {
-      setInfo("Conta criada! Verifique seu e-mail para confirmar (se a confirmação estiver ativada) ou já entre normalmente.");
-    }
+    if (result.error) setError(result.error);
   }
 
   if (session) return <Navigate to="/" replace />;
@@ -42,7 +32,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-lg font-semibold">meiro</h1>
           <p className="text-text-muted text-sm mt-1 text-center">
-            {mode === "login" ? "Do labirinto à clareza. Entre para continuar." : "Clareza para evoluir. Crie sua conta para começar."}
+            Do labirinto à clareza. Entre para continuar.
           </p>
         </div>
 
@@ -65,19 +55,17 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
-          {info && <p className="text-sm text-emerald-600">{info}</p>}
           <button type="submit" disabled={loading} className="btn btn-primary w-full justify-center">
             {loading && <Loader2 size={16} className="animate-spin" />}
-            {mode === "login" ? "Entrar" : "Criar conta"}
+            Entrar
           </button>
         </form>
 
-        <button
-          onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(null); setInfo(null); }}
-          className="text-sm text-text-muted hover:text-text mt-4 w-full text-center"
-        >
-          {mode === "login" ? "Não tem conta? Criar uma agora" : "Já tem conta? Entrar"}
-        </button>
+        <p className="text-sm text-text-muted mt-4 text-center leading-relaxed">
+          O beta é por convite. Entre na lista de espera na{" "}
+          <a href="/" className="text-brand underline">página inicial</a>{" "}
+          e você receberá um e-mail para criar sua senha.
+        </p>
       </div>
     </div>
   );

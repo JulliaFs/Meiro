@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./layout/AppLayout";
 import { ProtectedRoute } from "./layout/ProtectedRoute";
+import { AdminRoute } from "./layout/AdminRoute";
 import { HomeGate } from "./layout/HomeGate";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -46,7 +47,9 @@ export default function App() {
             <Route path="/carreira" element={<CarreiraPage />} />
             <Route path="/metas" element={<MetasPage />} />
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />
-            <Route path="/waitlist" element={<WaitlistPage />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/waitlist" element={<WaitlistPage />} />
+            </Route>
           </Route>
         </Route>
       </Routes>
