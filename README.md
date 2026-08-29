@@ -14,6 +14,11 @@
 
 ## Telas
 
+<p align="center">
+  <img src="docs/screenshots/landing.png" alt="Landing do Meiro" width="100%" /><br />
+  <sub><b>Landing</b> — apresentação pública em withmeiro.xyz, com captura de lista de espera e conteúdo em português, inglês e espanhol.</sub>
+</p>
+
 <table>
 <tr>
 <td width="50%"><img src="docs/screenshots/dashboard.png" alt="Dashboard" /><br /><sub><b>Dashboard</b> — o dia em uma tela: horas da semana, o que fazer agora e progresso. Tema claro.</sub></td>
