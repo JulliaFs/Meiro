@@ -258,7 +258,7 @@ begin
     execute format('alter table %I enable row level security;', t);
     execute format('create policy "select_own" on %I for select using (auth.uid() = user_id);', t);
     execute format('create policy "insert_own" on %I for insert with check (auth.uid() = user_id);', t);
-    execute format('create policy "update_own" on %I for update using (auth.uid() = user_id);', t);
+    execute format('create policy "update_own" on %I for update using (auth.uid() = user_id) with check (auth.uid() = user_id);', t);
     execute format('create policy "delete_own" on %I for delete using (auth.uid() = user_id);', t);
   end loop;
 end $$;
@@ -280,6 +280,38 @@ create policy "arquivos_delete_own"
 on storage.objects for delete
 using (bucket_id = 'arquivos' and (storage.foldername(name))[1] = auth.uid()::text);
 
+-- ---------- admins: quem pode gerenciar a lista de espera e enviar convites ----------
+-- A tabela nao tem policy de insert/update/delete: so a service role (SQL Editor do
+-- painel do Supabase) promove alguem a admin. Assim ninguem se auto-promove pelo app.
+create table if not exists admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table admins enable row level security;
+
+drop policy if exists "admins_select_self" on admins;
+create policy "admins_select_self"
+on admins for select
+to authenticated
+using (user_id = auth.uid());
+
+create or replace function is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from admins where user_id = auth.uid());
+$$;
+
+revoke execute on function is_admin() from anon;
+grant execute on function is_admin() to authenticated;
+
+-- Depois de criar sua conta, rode uma vez no SQL Editor para virar admin:
+--   insert into admins (user_id) values ('SEU-USER-UUID') on conflict do nothing;
+
 -- ---------- waitlist: captura de leads da landing page (sem autenticação) ----------
 create table if not exists waitlist_signups (
   id uuid primary key default gen_random_uuid(),
@@ -289,14 +321,17 @@ create table if not exists waitlist_signups (
 
 alter table waitlist_signups enable row level security;
 
+-- Qualquer visitante pode se inscrever, mas ninguem le a lista alem dos admins.
+drop policy if exists "waitlist_insert_anyone" on waitlist_signups;
 create policy "waitlist_insert_anyone"
 on waitlist_signups for insert
 to anon, authenticated
 with check (true);
 
--- ---------- waitlist: status de aprovação + acesso para o admin (usuário autenticado) ----------
+-- ---------- waitlist: status de aprovação + acesso restrito aos admins ----------
 alter table waitlist_signups add column if not exists status text not null default 'pending';
 alter table waitlist_signups add column if not exists notes text;
+alter table waitlist_signups add column if not exists invited_at timestamptz;
 
 do $$
 begin
@@ -306,36 +341,30 @@ begin
   end if;
 end $$;
 
-create policy "waitlist_select_authenticated"
+drop policy if exists "waitlist_select_authenticated" on waitlist_signups;
+drop policy if exists "waitlist_update_authenticated" on waitlist_signups;
+drop policy if exists "waitlist_delete_authenticated" on waitlist_signups;
+
+create policy "waitlist_select_admin"
 on waitlist_signups for select
 to authenticated
-using (true);
+using (is_admin());
 
-create policy "waitlist_update_authenticated"
+create policy "waitlist_update_admin"
 on waitlist_signups for update
 to authenticated
-using (true)
-with check (true);
+using (is_admin())
+with check (is_admin());
 
-create policy "waitlist_delete_authenticated"
+create policy "waitlist_delete_admin"
 on waitlist_signups for delete
 to authenticated
-using (true);
+using (is_admin());
 
--- ---------- waitlist: checagem segura de aprovação para o cadastro (sem expor a tabela ao anon) ----------
-create or replace function is_waitlist_approved(check_email text)
-returns boolean
-language sql
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from waitlist_signups
-    where email = check_email and status = 'approved'
-  );
-$$;
-
-grant execute on function is_waitlist_approved(text) to anon, authenticated;
-
--- ---------- waitlist: registro de quando o convite foi enviado ----------
-alter table waitlist_signups add column if not exists invited_at timestamptz;
+-- ---------- cadastro: somente por convite ----------
+-- O acesso e liberado apenas pelo convite enviado na tela de Lista de Espera
+-- (edge function invite-user). Desative "Allow new users to sign up" em
+-- Authentication > Sign In / Providers no painel do Supabase.
+-- A funcao abaixo existia para uma checagem feita no navegador, que nao protegia
+-- nada (a anon key e publica) e ainda permitia enumerar quem estava aprovado.
+drop function if exists is_waitlist_approved(text);
