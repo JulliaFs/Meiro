@@ -4,10 +4,12 @@ import { Menu, X } from "lucide-react";
 import { MeiroLogo } from "../common/MeiroLogo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useLandingI18n } from "./i18n";
+import { useAuthStore } from "../../store/useAuthStore";
 
 export function LandingNav() {
   const [open, setOpen] = useState(false);
   const { t } = useLandingI18n();
+  const session = useAuthStore((s) => s.session);
 
   const LINKS = [
     { href: "#features", label: t.nav.features },
@@ -34,8 +36,8 @@ export function LandingNav() {
 
         <div className="hidden lg:flex items-center gap-2.5 shrink-0">
           <LanguageSwitcher />
-          <Link to="/login" className="text-sm text-text-muted hover:text-text px-2 py-1.5 whitespace-nowrap">
-            {t.nav.login}
+          <Link to={session ? "/" : "/login"} className="text-sm text-text-muted hover:text-text px-2 py-1.5 whitespace-nowrap">
+            {session ? t.nav.backToApp : t.nav.login}
           </Link>
           <a href="#beta" className="btn btn-primary text-sm whitespace-nowrap">
             {t.nav.joinBeta}
@@ -61,8 +63,8 @@ export function LandingNav() {
           <div className="flex items-center justify-between pt-2 border-t border-border mt-1">
             <LanguageSwitcher />
             <div className="flex items-center gap-3">
-              <Link to="/login" onClick={() => setOpen(false)} className="text-sm text-text-muted hover:text-text">
-                {t.nav.login}
+              <Link to={session ? "/" : "/login"} onClick={() => setOpen(false)} className="text-sm text-text-muted hover:text-text">
+                {session ? t.nav.backToApp : t.nav.login}
               </Link>
               <a href="#beta" onClick={() => setOpen(false)} className="btn btn-primary text-sm">
                 {t.nav.joinBeta}

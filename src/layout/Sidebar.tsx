@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
-import { NavLink } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   GraduationCap,
@@ -15,6 +15,9 @@ import {
   Settings,
   LayoutDashboard,
   UserPlus,
+  LogOut,
+  Sparkles,
+  ChevronsUpDown,
   X,
 } from "lucide-react";
 import { cls } from "../lib/utils";
@@ -132,25 +135,87 @@ function Logo({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-function ProfileFooter({ collapsed }: { collapsed: boolean }) {
+function ProfileFooter({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const session = useAuthStore((s) => s.session);
+  const signOut = useAuthStore((s) => s.signOut);
+  const [aberto, setAberto] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!aberto) return;
+    function aoClicarFora(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setAberto(false);
+    }
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === "Escape") setAberto(false);
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("mousedown", aoClicarFora);
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [aberto]);
+
   if (!session) return null;
   const nome = (session.user.user_metadata?.nome as string) || session.user.email || "Conta";
   const inicial = nome.charAt(0).toUpperCase();
 
+  async function sair() {
+    setAberto(false);
+    onNavigate?.();
+    await signOut();
+    navigate("/", { replace: true });
+  }
+
   return (
-    <div className="border-t border-border px-3 py-3 flex items-center gap-2.5 shrink-0">
-      <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-xs font-semibold shrink-0">
-        {inicial}
-      </div>
-      {!collapsed && (
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-text truncate">{nome}</p>
-          {session.user.email && session.user.email !== nome && (
-            <p className="label-mono truncate">{session.user.email}</p>
-          )}
+    <div ref={menuRef} className="relative border-t border-border shrink-0">
+      {aberto && (
+        <div className="absolute bottom-full left-2 right-2 mb-2 rounded-lg border border-border bg-surface shadow-lg overflow-hidden z-20">
+          <Link
+            to="/apresentacao"
+            onClick={() => {
+              setAberto(false);
+              onNavigate?.();
+            }}
+            className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
+          >
+            <Sparkles size={15} className="shrink-0" />
+            <span className="whitespace-nowrap">Ver apresentação</span>
+          </Link>
+          <button
+            onClick={sair}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-red-500 hover:bg-surface-2 transition-colors border-t border-border"
+          >
+            <LogOut size={15} className="shrink-0" />
+            <span className="whitespace-nowrap">Sair da conta</span>
+          </button>
         </div>
       )}
+
+      <button
+        onClick={() => setAberto((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={aberto}
+        title={collapsed ? nome : "Conta"}
+        className="w-full px-3 py-3 flex items-center gap-2.5 hover:bg-surface-2 transition-colors text-left"
+      >
+        <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-xs font-semibold shrink-0">
+          {inicial}
+        </div>
+        {!collapsed && (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-text truncate">{nome}</p>
+              {session.user.email && session.user.email !== nome && (
+                <p className="label-mono truncate">{session.user.email}</p>
+              )}
+            </div>
+            <ChevronsUpDown size={14} className="text-text-muted shrink-0" />
+          </>
+        )}
+      </button>
     </div>
   );
 }
@@ -247,7 +312,7 @@ export function Sidebar() {
                 </button>
               </div>
               <SidebarNav collapsed={false} onNavigate={() => setMobileNavOpen(false)} />
-              <ProfileFooter collapsed={false} />
+              <ProfileFooter collapsed={false} onNavigate={() => setMobileNavOpen(false)} />
             </motion.aside>
           </motion.div>
         )}

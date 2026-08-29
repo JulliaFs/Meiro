@@ -6,7 +6,7 @@ export type Lang = "pt" | "en" | "es";
 const STORAGE_KEY = "meiro_landing_lang";
 
 interface Dictionary {
-  nav: { features: string; philosophy: string; roadmap: string; faq: string; login: string; joinBeta: string };
+  nav: { features: string; philosophy: string; roadmap: string; faq: string; login: string; joinBeta: string; backToApp: string };
   hero: { title: string; subtitle: string; ctaPrimary: string; ctaSecondary: string };
   preview: {
     today: string;
@@ -35,7 +35,7 @@ interface Dictionary {
 
 const dictionaries: Record<Lang, Dictionary> = {
   en: {
-    nav: { features: "Features", philosophy: "Philosophy", roadmap: "Roadmap", faq: "FAQ", login: "Login", joinBeta: "Join Beta" },
+    nav: { features: "Features", philosophy: "Philosophy", roadmap: "Roadmap", faq: "FAQ", login: "Login", joinBeta: "Join Beta", backToApp: "Go to app" },
     hero: {
       title: "Clarity for Academic Growth.",
       subtitle: "Organize your subjects, tasks, notes, flashcards and academic life in one beautiful workspace.",
@@ -119,7 +119,7 @@ const dictionaries: Record<Lang, Dictionary> = {
     footer: { privacy: "Privacy", terms: "Terms", contact: "Contact", rights: "All rights reserved." },
   },
   pt: {
-    nav: { features: "Funcionalidades", philosophy: "Filosofia", roadmap: "Roteiro", faq: "Perguntas", login: "Entrar", joinBeta: "Entrar no Beta" },
+    nav: { features: "Funcionalidades", philosophy: "Filosofia", roadmap: "Roteiro", faq: "Perguntas", login: "Entrar", joinBeta: "Entrar no Beta", backToApp: "Ir para o app" },
     hero: {
       title: "Clareza para o seu crescimento acadêmico.",
       subtitle: "Organize suas matérias, tarefas, anotações, flashcards e vida acadêmica em um único espaço bonito e simples.",
@@ -203,7 +203,7 @@ const dictionaries: Record<Lang, Dictionary> = {
     footer: { privacy: "Privacidade", terms: "Termos", contact: "Contato", rights: "Todos os direitos reservados." },
   },
   es: {
-    nav: { features: "Funciones", philosophy: "Filosofía", roadmap: "Hoja de ruta", faq: "Preguntas", login: "Iniciar sesión", joinBeta: "Unirme al Beta" },
+    nav: { features: "Funciones", philosophy: "Filosofía", roadmap: "Hoja de ruta", faq: "Preguntas", login: "Iniciar sesión", joinBeta: "Unirme al Beta", backToApp: "Ir a la app" },
     hero: {
       title: "Claridad para tu crecimiento académico.",
       subtitle: "Organiza tus materias, tareas, notas, flashcards y vida académica en un solo espacio elegante.",

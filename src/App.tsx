@@ -19,12 +19,15 @@ import CarreiraPage from "./pages/CarreiraPage";
 import MetasPage from "./pages/MetasPage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import WaitlistPage from "./pages/WaitlistPage";
+import LandingPage from "./pages/LandingPage";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Apresentação do produto, acessível também para quem já está logada */}
+        <Route path="/apresentacao" element={<LandingPage />} />
         <Route path="/" element={<HomeGate />}>
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
