@@ -66,3 +66,9 @@ Variáveis necessárias (veja `.env.example`):
 | `npm run build` | Type-check + build de produção |
 | `npm run lint` | Oxlint |
 | `npm run preview` | Serve o build local |
+
+## Licença
+
+Proprietário — todos os direitos reservados. O código está público apenas para
+leitura e avaliação; nenhum uso, cópia ou redistribuição é autorizado. Veja
+[LICENSE](LICENSE).
