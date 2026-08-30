@@ -26,7 +26,7 @@ export function Breadcrumbs() {
 
   return (
     <div className="flex items-center gap-1.5 text-sm">
-      <Link to="/" className="text-text-muted hover:text-text">JU Academy OS</Link>
+      <Link to="/" className="text-text-muted hover:text-text">Meiro</Link>
       {parts.map((part, idx) => {
         const isLast = idx === parts.length - 1;
         const to = "/" + parts.slice(0, idx + 1).join("/");

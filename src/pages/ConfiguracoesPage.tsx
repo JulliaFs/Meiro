@@ -34,7 +34,7 @@ export default function ConfiguracoesPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ju-academy-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `meiro-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
   }
 
@@ -56,7 +56,7 @@ export default function ConfiguracoesPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="page-title">Configurações</h1>
-        <p className="text-text-muted text-sm mt-1">Personalize sua experiência no JU Academy OS.</p>
+        <p className="text-text-muted text-sm mt-1">Personalize sua experiência no Meiro.</p>
       </div>
 
       <Card>
