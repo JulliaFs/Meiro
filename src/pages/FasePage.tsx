@@ -8,28 +8,33 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Badge } from "../components/ui/Badge";
 import { CapituloDetailModal } from "../components/faculdade/CapituloDetailModal";
 import { useCapitulos, useFase } from "../hooks/useLiveData";
+import { useEnvio } from "../hooks/useEnvio";
 import { capituloService, faseService } from "../services";
-import { cls, statusColor, statusLabel } from "../lib/utils";
-import type { Capitulo, StatusFase } from "../types";
+import { cls, formatDate, statusColor, statusLabel } from "../lib/utils";
+import type { StatusFase } from "../types";
 
 function CapituloForm({ faseId, onClose }: { faseId: string; onClose: () => void }) {
   const capitulos = useCapitulos(faseId);
   const [nome, setNome] = useState("");
   const [numero, setNumero] = useState((capitulos?.length ?? 0) + 1);
   const [descricao, setDescricao] = useState("");
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!nome.trim()) return;
-    await capituloService.create({
-      faseId,
-      nome,
-      numero,
-      descricao,
-      status: "nao_iniciado",
-      links: [],
-      skills: [],
-    });
-    onClose();
+    executar(
+      () =>
+        capituloService.create({
+          faseId,
+          nome,
+          numero,
+          descricao,
+          status: "nao_iniciado",
+          links: [],
+          skills: [],
+        }),
+      onClose
+    );
   }
 
   return (
@@ -39,18 +44,20 @@ function CapituloForm({ faseId, onClose }: { faseId: string; onClose: () => void
         <input type="number" className="input" placeholder="Nº" value={numero} onChange={(e) => setNumero(+e.target.value)} />
       </div>
       <textarea className="input" placeholder="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Adicionar capítulo</button>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !nome.trim()}>Adicionar capítulo</button>
     </div>
   );
 }
 
 export default function FasePage() {
-  const { faseId } = useParams();
+  const { anoId, faseId } = useParams();
   const navigate = useNavigate();
   const fase = useFase(faseId);
   const capitulos = useCapitulos(faseId);
   const [modalCapitulo, setModalCapitulo] = useState(false);
-  const [capituloAtivo, setCapituloAtivo] = useState<Capitulo | null>(null);
+  // guarda só o id: o modal abre com a versão mais recente da lista
+  const [capituloAtivoId, setCapituloAtivoId] = useState<string | null>(null);
+  const capituloAtivo = capitulos?.find((c) => c.id === capituloAtivoId);
 
   if (!fase) return null;
 
@@ -70,14 +77,14 @@ export default function FasePage() {
           <div className="flex-1 min-w-[240px]">
             <CardHeader title={`Fase ${fase.numero} · ${fase.nome}`} subtitle={fase.descricao} />
             <div className="flex gap-2 flex-wrap mb-2">
-              {fase.dataInicio && <Badge>Início: {new Date(fase.dataInicio).toLocaleDateString("pt-BR")}</Badge>}
-              {fase.dataTermino && <Badge>Término: {new Date(fase.dataTermino).toLocaleDateString("pt-BR")}</Badge>}
+              {fase.dataInicio && <Badge>Início: {formatDate(fase.dataInicio)}</Badge>}
+              {fase.dataTermino && <Badge>Término: {formatDate(fase.dataTermino)}</Badge>}
             </div>
             {fase.observacoes && <p className="text-xs text-text-muted">{fase.observacoes}</p>}
           </div>
           <select
             value={fase.status}
-            onChange={(e) => faseService.update(fase.id, { status: e.target.value as StatusFase })}
+            onChange={(e) => faseService.update(fase.id, { status: e.target.value as StatusFase }).catch(() => {})}
             className={cls("badge border-0 outline-none cursor-pointer", statusColor(fase.status))}
           >
             <option value="pendente">{statusLabel("pendente")}</option>
@@ -105,7 +112,7 @@ export default function FasePage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {capitulos?.map((c) => (
-          <button key={c.id} onClick={() => setCapituloAtivo(c)} className="card p-4 text-left hover:border-brand transition-colors">
+          <button key={c.id} onClick={() => setCapituloAtivoId(c.id)} className="card p-4 text-left hover:border-brand transition-colors">
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium text-sm truncate">Cap. {c.numero} · {c.nome}</span>
             </div>
@@ -122,7 +129,13 @@ export default function FasePage() {
       </Modal>
 
       {capituloAtivo && (
-        <CapituloDetailModal capitulo={capituloAtivo} faseLabel={faseLabel} onClose={() => setCapituloAtivo(null)} />
+        <CapituloDetailModal
+          key={capituloAtivo.id}
+          capitulo={capituloAtivo}
+          faseLabel={faseLabel}
+          anoId={anoId}
+          onClose={() => setCapituloAtivoId(null)}
+        />
       )}
     </div>
   );

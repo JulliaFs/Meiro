@@ -7,20 +7,20 @@ import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { AulaDetailModal } from "../components/cursos/AulaDetailModal";
 import { useAulas, useCurso, useModulos } from "../hooks/useLiveData";
+import { useEnvio } from "../hooks/useEnvio";
 import { aulaService, moduloService } from "../services";
 import { cls, statusColor, statusLabel } from "../lib/utils";
-import type { Aula } from "../types";
 
 function ModuloForm({ cursoId, onClose }: { cursoId: string; onClose: () => void }) {
   const modulos = useModulos(cursoId);
   const [nome, setNome] = useState("");
   const [numero, setNumero] = useState((modulos?.length ?? 0) + 1);
   const [descricao, setDescricao] = useState("");
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!nome.trim()) return;
-    await moduloService.create({ cursoId, nome, numero, descricao, status: "nao_iniciado" });
-    onClose();
+    executar(() => moduloService.create({ cursoId, nome, numero, descricao, status: "nao_iniciado" }), onClose);
   }
 
   return (
@@ -30,7 +30,7 @@ function ModuloForm({ cursoId, onClose }: { cursoId: string; onClose: () => void
         <input type="number" className="input" placeholder="Nº" value={numero} onChange={(e) => setNumero(+e.target.value)} />
       </div>
       <textarea className="input" placeholder="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Adicionar módulo</button>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !nome.trim()}>Adicionar módulo</button>
     </div>
   );
 }
@@ -39,11 +39,11 @@ function AulaForm({ moduloId, onClose }: { moduloId: string; onClose: () => void
   const aulas = useAulas(moduloId);
   const [nome, setNome] = useState("");
   const [numero, setNumero] = useState((aulas?.length ?? 0) + 1);
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!nome.trim()) return;
-    await aulaService.create({ moduloId, nome, numero, status: "nao_iniciado", skills: [] });
-    onClose();
+    executar(() => aulaService.create({ moduloId, nome, numero, status: "nao_iniciado", skills: [] }), onClose);
   }
 
   return (
@@ -52,7 +52,7 @@ function AulaForm({ moduloId, onClose }: { moduloId: string; onClose: () => void
         <input className="input col-span-2" placeholder="Nome da aula" value={nome} onChange={(e) => setNome(e.target.value)} />
         <input type="number" className="input" placeholder="Nº" value={numero} onChange={(e) => setNumero(+e.target.value)} />
       </div>
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Adicionar aula</button>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !nome.trim()}>Adicionar aula</button>
     </div>
   );
 }
@@ -61,7 +61,9 @@ function ModuloCard({ moduloId, nome, numero, cursoLabel, cursoId }: { moduloId:
   const [open, setOpen] = useState(true);
   const aulas = useAulas(moduloId);
   const [modalAula, setModalAula] = useState(false);
-  const [aulaAtiva, setAulaAtiva] = useState<Aula | null>(null);
+  // guarda só o id: o modal abre com a versão mais recente da lista
+  const [aulaAtivaId, setAulaAtivaId] = useState<string | null>(null);
+  const aulaAtiva = aulas?.find((a) => a.id === aulaAtivaId);
 
   const total = aulas?.length ?? 0;
   const concluidas = aulas?.filter((a) => a.status === "concluido").length ?? 0;
@@ -83,7 +85,7 @@ function ModuloCard({ moduloId, nome, numero, cursoLabel, cursoId }: { moduloId:
       {open && (
         <div className="mt-3 border-t border-border pt-3 space-y-2">
           {aulas?.map((a) => (
-            <button key={a.id} onClick={() => setAulaAtiva(a)} className="w-full flex items-center justify-between border border-border rounded-lg p-2 text-sm hover:border-brand">
+            <button key={a.id} onClick={() => setAulaAtivaId(a.id)} className="w-full flex items-center justify-between border border-border rounded-lg p-2 text-sm hover:border-brand">
               <span className="truncate">Aula {a.numero} · {a.nome}</span>
               <span className={cls("badge", statusColor(a.status))}>{statusLabel(a.status)}</span>
             </button>
@@ -99,7 +101,13 @@ function ModuloCard({ moduloId, nome, numero, cursoLabel, cursoId }: { moduloId:
       </Modal>
 
       {aulaAtiva && (
-        <AulaDetailModal aula={aulaAtiva} cursoLabel={`${cursoLabel} > Módulo ${numero}`} cursoId={cursoId} onClose={() => setAulaAtiva(null)} />
+        <AulaDetailModal
+          key={aulaAtiva.id}
+          aula={aulaAtiva}
+          cursoLabel={`${cursoLabel} > Módulo ${numero}`}
+          cursoId={cursoId}
+          onClose={() => setAulaAtivaId(null)}
+        />
       )}
     </Card>
   );
@@ -122,7 +130,7 @@ export default function CursoDetailPage() {
 
       <Card>
         <div className="flex items-start justify-between flex-wrap gap-3">
-          <CardHeader title={curso.nome} subtitle={`${curso.plataforma}${curso.instrutor ? " · " + curso.instrutor : ""}`} />
+          <CardHeader title={curso.nome} subtitle={[curso.plataforma, curso.instrutor].filter(Boolean).join(" · ")} />
           <span className={cls("badge", statusColor(curso.status))}>{statusLabel(curso.status)}</span>
         </div>
       </Card>

@@ -20,12 +20,16 @@ import MetasPage from "./pages/MetasPage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import WaitlistPage from "./pages/WaitlistPage";
 import LandingPage from "./pages/LandingPage";
+import DefinirSenhaPage from "./pages/DefinirSenhaPage";
+import { Toaster } from "./components/ui/Toaster";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Destino dos links de convite e de "esqueci minha senha" */}
+        <Route path="/definir-senha" element={<DefinirSenhaPage />} />
         {/* Apresentação do produto, acessível também para quem já está logada */}
         <Route path="/apresentacao" element={<LandingPage />} />
         <Route path="/" element={<HomeGate />}>
@@ -56,6 +60,7 @@ export default function App() {
           </Route>
         </Route>
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

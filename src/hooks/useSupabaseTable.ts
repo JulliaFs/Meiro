@@ -30,6 +30,10 @@ export function useSupabaseTable<T>(
     async function load() {
       let query: AnyQuery = supabase.from(table).select("*");
       if (configure) query = configure(query);
+      // Sem ordem explícita o Postgres devolve as linhas em qualquer ordem, e uma
+      // linha editada costuma ir para o fim: listas pulavam e o modo revisão
+      // dos flashcards pulava/repetia cartões.
+      query = query.order("created_at").order("id");
       const { data, error } = await query;
       if (!active) return;
       if (error) {

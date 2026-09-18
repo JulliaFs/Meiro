@@ -2,12 +2,34 @@ export function cls(...parts: Array<string | false | null | undefined>): string 
   return parts.filter(Boolean).join(" ");
 }
 
+/**
+ * "2026-08-29" vira meia-noite no fuso LOCAL. `new Date("2026-08-29")` seria
+ * meia-noite UTC, que no Brasil ainda é dia 28 — as datas apareciam um dia antes.
+ */
+export function parseDate(iso: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  return new Date(iso);
+}
+
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR");
+  return parseDate(iso).toLocaleDateString("pt-BR");
+}
+
+/** Data no formato YYYY-MM-DD no fuso local (toISOString usa UTC e vira o dia às 21h). */
+export function toIsoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toIsoDate(new Date());
+}
+
+export function confirmar(mensagem: string): boolean {
+  return window.confirm(mensagem);
 }
 
 export function statusLabel(status: string): string {

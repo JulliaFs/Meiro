@@ -1,38 +1,46 @@
 import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Card, CardHeader } from "../components/ui/Card";
 import { ProgressBar } from "../components/ui/ProgressBar";
 import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useMetas } from "../hooks/useLiveData";
 import { metaService, uid } from "../services";
+import { useEnvio } from "../hooks/useEnvio";
+import { confirmar, formatDate } from "../lib/utils";
 import type { CategoriaMeta, Meta } from "../types";
 import { Target } from "lucide-react";
 
 const CATEGORIAS: CategoriaMeta[] = ["anual", "trimestral", "mensal", "semanal", "diaria"];
 const LABEL: Record<CategoriaMeta, string> = { anual: "Anual", trimestral: "Trimestral", mensal: "Mensal", semanal: "Semanal", diaria: "Diária" };
 
-function MetaForm({ onClose }: { onClose: () => void }) {
+function MetaForm({ categoriaInicial, onClose }: { categoriaInicial: CategoriaMeta; onClose: () => void }) {
   const [descricao, setDescricao] = useState("");
   const [prazo, setPrazo] = useState("");
-  const [categoria, setCategoria] = useState<CategoriaMeta>("mensal");
+  const [categoria, setCategoria] = useState<CategoriaMeta>(categoriaInicial);
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!descricao.trim()) return;
-    await metaService.create({ descricao, prazo, categoria, progresso: 0, checklist: [] });
-    onClose();
+    executar(() => metaService.create({ descricao, prazo, categoria, progresso: 0, checklist: [] }), onClose);
   }
 
   return (
     <div className="space-y-3">
       <input className="input" placeholder="Descrição da meta" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
       <div className="grid grid-cols-2 gap-3">
-        <input type="date" className="input" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
-        <select className="input" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaMeta)}>
-          {CATEGORIAS.map((c) => <option key={c} value={c}>{LABEL[c]}</option>)}
-        </select>
+        <label className="text-xs text-text-muted">
+          Prazo
+          <input type="date" className="input mt-1" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
+        </label>
+        <label className="text-xs text-text-muted">
+          Tipo
+          <select className="input mt-1" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaMeta)}>
+            {CATEGORIAS.map((c) => <option key={c} value={c}>{LABEL[c]}</option>)}
+          </select>
+        </label>
       </div>
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Salvar</button>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !descricao.trim()}>Salvar</button>
     </div>
   );
 }
@@ -42,35 +50,47 @@ function MetaCard({ meta }: { meta: Meta }) {
 
   async function addItem() {
     if (!novoItem.trim()) return;
-    const checklist = [...meta.checklist, { id: uid(), texto: novoItem, feito: false }];
-    await recalcular(checklist);
-    setNovoItem("");
+    const checklist = [...meta.checklist, { id: uid(), texto: novoItem.trim(), feito: false }];
+    if (await recalcular(checklist)) setNovoItem("");
   }
 
-  async function toggleItem(id: string) {
-    const checklist = meta.checklist.map((i) => (i.id === id ? { ...i, feito: !i.feito } : i));
-    await recalcular(checklist);
+  function toggleItem(id: string) {
+    recalcular(meta.checklist.map((i) => (i.id === id ? { ...i, feito: !i.feito } : i)));
   }
 
-  async function recalcular(checklist: Meta["checklist"]) {
-    const progresso = checklist.length ? Math.round((checklist.filter((i) => i.feito).length / checklist.length) * 100) : meta.progresso;
-    await metaService.update(meta.id, { checklist, progresso });
+  function removerItem(id: string) {
+    recalcular(meta.checklist.filter((i) => i.id !== id));
+  }
+
+  async function recalcular(checklist: Meta["checklist"]): Promise<boolean> {
+    const progresso = checklist.length ? Math.round((checklist.filter((i) => i.feito).length / checklist.length) * 100) : 0;
+    try {
+      await metaService.update(meta.id, { checklist, progresso });
+      return true;
+    } catch {
+      return false; // erro já exibido
+    }
   }
 
   return (
     <Card>
       <div className="flex items-start justify-between">
-        <CardHeader title={meta.descricao} subtitle={meta.prazo ? `Prazo: ${new Date(meta.prazo).toLocaleDateString("pt-BR")}` : undefined} />
-        <button className="text-text-muted hover:text-red-500 p-1" onClick={() => metaService.remove(meta.id)}><Trash2 size={14} /></button>
+        <CardHeader title={meta.descricao} subtitle={meta.prazo ? `Prazo: ${formatDate(meta.prazo)}` : undefined} />
+        <button className="text-text-muted hover:text-red-500 p-1" onClick={() => confirmar(`Excluir a meta "${meta.descricao}"?`) && metaService.remove(meta.id).catch(() => {})}><Trash2 size={14} /></button>
       </div>
       <ProgressBar value={meta.progresso} />
       <p className="text-xs text-text-muted mt-1 mb-2">{meta.progresso}% concluído</p>
       <div className="space-y-1">
         {meta.checklist.map((i) => (
-          <label key={i.id} className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={i.feito} onChange={() => toggleItem(i.id)} />
-            <span className={i.feito ? "line-through text-text-muted" : ""}>{i.texto}</span>
-          </label>
+          <div key={i.id} className="flex items-center gap-2 text-sm group">
+            <label className="flex items-center gap-2 flex-1 min-w-0">
+              <input type="checkbox" checked={i.feito} onChange={() => toggleItem(i.id)} />
+              <span className={i.feito ? "line-through text-text-muted" : ""}>{i.texto}</span>
+            </label>
+            <button className="text-text-muted hover:text-red-500 opacity-60 group-hover:opacity-100" onClick={() => removerItem(i.id)} aria-label="Remover item">
+              <X size={12} />
+            </button>
+          </div>
         ))}
       </div>
       <div className="flex gap-2 mt-2">
@@ -113,7 +133,7 @@ export default function MetasPage() {
       </div>
 
       <Modal open={modal} onClose={() => setModal(false)} title="Nova meta">
-        <MetaForm onClose={() => setModal(false)} />
+        <MetaForm categoriaInicial={tab} onClose={() => setModal(false)} />
       </Modal>
     </div>
   );

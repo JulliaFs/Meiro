@@ -6,11 +6,14 @@ function snake(s: string): string {
   return s.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 }
 
-/** Converte chaves de nível superior de snake_case (Postgres) para camelCase (TS). Arrays/JSON internos não são tocados. */
+/**
+ * Converte chaves de nível superior de snake_case (Postgres) para camelCase (TS). Arrays/JSON internos não são tocados.
+ * `null` vira `undefined`, que é como os campos opcionais estão tipados.
+ */
 export function snakeToCamel<T = unknown>(obj: Record<string, unknown>): T {
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(obj)) {
-    out[camel(key)] = obj[key];
+    out[camel(key)] = obj[key] === null ? undefined : obj[key];
   }
   return out as T;
 }

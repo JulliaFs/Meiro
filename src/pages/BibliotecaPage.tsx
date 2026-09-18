@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
-import { Upload, Search, FileText, Image as ImageIcon, File, Sparkles, Download, Trash2 } from "lucide-react";
+import { Upload, Search, FileText, Image as ImageIcon, File, Sparkles, Download, Trash2, Loader2 } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ProfessorIaModal } from "../components/common/ProfessorIaModal";
 import { useAreas, useMateriais } from "../hooks/useLiveData";
-import { arquivoService, materialService } from "../services";
-import { todayIso } from "../lib/utils";
+import { arquivoService, criarMaterialComArquivo, excluirMaterial } from "../services";
+import { useEnvio } from "../hooks/useEnvio";
+import { confirmar } from "../lib/utils";
 import type { Material, TipoMaterial } from "../types";
 
 function iconFor(tipo: TipoMaterial) {
@@ -24,29 +25,38 @@ function UploadForm({ onClose }: { onClose: () => void }) {
   const [tags, setTags] = useState("");
   const [area, setArea] = useState("");
   const [pasta, setPasta] = useState("");
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!file || !titulo.trim()) return;
-    const arquivo = await arquivoService.upload(file);
-    const tipo: TipoMaterial = file.type === "application/pdf" ? "pdf" : file.type.startsWith("image/") ? "imagem" : "docx";
-    await materialService.create({
-      titulo,
-      descricao,
-      tipo,
-      tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-      area,
-      pasta,
-      arquivoId: arquivo.path,
-      dataUpload: todayIso(),
-    });
-    onClose();
+    executar(
+      () =>
+        criarMaterialComArquivo(file, {
+          titulo,
+          descricao,
+          tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+          area,
+          pasta,
+        }),
+      onClose
+    );
   }
 
   return (
     <div className="space-y-3">
       <label className="btn btn-secondary cursor-pointer w-full justify-center">
         <Upload size={16} /> {file ? file.name : "Selecionar arquivo (PDF, DOCX, imagem)"}
-        <input type="file" accept=".pdf,.doc,.docx,image/*" className="hidden" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <input
+          type="file"
+          accept=".pdf,.doc,.docx,image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            setFile(f);
+            // já sugere o nome do arquivo como título
+            if (f && !titulo.trim()) setTitulo(f.name.replace(/\.[^.]+$/, ""));
+          }}
+        />
       </label>
       <input className="input" placeholder="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
       <textarea className="input" placeholder="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
@@ -58,8 +68,9 @@ function UploadForm({ onClose }: { onClose: () => void }) {
         </select>
         <input className="input" placeholder="Pasta" value={pasta} onChange={(e) => setPasta(e.target.value)} />
       </div>
-      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={!file || !titulo.trim()}>
-        Salvar material
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !file || !titulo.trim()}>
+        {enviando && <Loader2 size={16} className="animate-spin" />}
+        {enviando ? "Enviando..." : "Salvar material"}
       </button>
     </div>
   );
@@ -85,15 +96,35 @@ export default function BibliotecaPage() {
   }, [materiais, busca, filtroArea]);
 
   async function abrirPreview(m: Material) {
+    if (m.url && !m.arquivoId) {
+      window.open(m.url, "_blank", "noreferrer");
+      return;
+    }
     if (!m.arquivoId) return;
-    const url = await arquivoService.getSignedUrl(m.arquivoId);
-    setPreviewUrl(url);
-    setPreview(m);
+    try {
+      const url = await arquivoService.getSignedUrl(m.arquivoId);
+      setPreviewUrl(url);
+      setPreview(m);
+    } catch {
+      // erro já exibido
+    }
+  }
+
+  function fecharPreview() {
+    setPreview(null);
+    setPreviewUrl(null);
   }
 
   async function baixar(m: Material) {
     if (!m.arquivoId) return;
-    await arquivoService.download(m.arquivoId, m.titulo);
+    // mantém a extensão original para o arquivo abrir no programa certo
+    const ext = m.arquivoId.match(/\.[^./]+$/)?.[0] ?? "";
+    const nome = m.titulo.toLowerCase().endsWith(ext.toLowerCase()) ? m.titulo : m.titulo + ext;
+    await arquivoService.download(m.arquivoId, nome).catch(() => {});
+  }
+
+  function excluir(m: Material) {
+    if (confirmar(`Excluir "${m.titulo}" da biblioteca?`)) excluirMaterial(m).catch(() => {});
   }
 
   return (
@@ -141,7 +172,7 @@ export default function BibliotecaPage() {
                   <p className="font-medium truncate">{m.titulo}</p>
                   {m.descricao && <p className="text-xs text-text-muted truncate">{m.descricao}</p>}
                 </div>
-                <button className="text-text-muted hover:text-red-500 p-1 shrink-0" onClick={() => materialService.remove(m.id)}>
+                <button className="text-text-muted hover:text-red-500 p-1 shrink-0" onClick={() => excluir(m)}>
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -163,7 +194,7 @@ export default function BibliotecaPage() {
         <UploadForm onClose={() => setOpenUpload(false)} />
       </Modal>
 
-      <Modal open={!!preview} onClose={() => setPreview(null)} title={preview?.titulo ?? ""} wide>
+      <Modal open={!!preview} onClose={fecharPreview} title={preview?.titulo ?? ""} wide>
         {previewUrl && (
           preview?.tipo === "imagem" ? (
             <img src={previewUrl} alt={preview.titulo} className="max-w-full rounded-lg" />

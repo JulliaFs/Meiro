@@ -19,6 +19,8 @@ import {
   useCursos,
 } from "../hooks/useLiveData";
 import { habilidadeService } from "../services";
+import { useEnvio } from "../hooks/useEnvio";
+import { confirmar, toIsoDate } from "../lib/utils";
 import { computeSkillStats } from "../lib/skillsStats";
 import type { Habilidade } from "../types";
 
@@ -26,12 +28,12 @@ function HabilidadeForm({ hab, onClose }: { hab?: Habilidade; onClose: () => voi
   const [nome, setNome] = useState(hab?.nome ?? "");
   const [nivelAtual, setNivelAtual] = useState(hab?.nivelAtual ?? 0);
   const [meta, setMeta] = useState(hab?.meta ?? 100);
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!nome.trim()) return;
-    if (hab) await habilidadeService.update(hab.id, { nome, nivelAtual, meta });
-    else await habilidadeService.create({ nome, nivelAtual, meta });
-    onClose();
+    const payload = { nome, nivelAtual, meta };
+    executar(() => (hab ? habilidadeService.update(hab.id, payload) : habilidadeService.create(payload)), onClose);
   }
 
   return (
@@ -45,7 +47,7 @@ function HabilidadeForm({ hab, onClose }: { hab?: Habilidade; onClose: () => voi
         Meta ({meta}%)
         <input type="range" min={0} max={100} value={meta} onChange={(e) => setMeta(+e.target.value)} className="w-full" />
       </label>
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Salvar</button>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !nome.trim()}>Salvar</button>
     </div>
   );
 }
@@ -67,7 +69,7 @@ export default function CarreiraPage() {
     let count = 0;
     const cursor = new Date();
     while (true) {
-      const iso = cursor.toISOString().slice(0, 10);
+      const iso = toIsoDate(cursor);
       if (dias.has(iso)) { count++; cursor.setDate(cursor.getDate() - 1); } else break;
     }
     return count;
@@ -153,7 +155,7 @@ export default function CarreiraPage() {
                     {hab && (
                       <div className="flex gap-1 shrink-0">
                         <button className="text-text-muted hover:text-text p-1" onClick={() => setModal(hab)}><Pencil size={14} /></button>
-                        <button className="text-text-muted hover:text-red-500 p-1" onClick={() => habilidadeService.remove(hab.id)}><Trash2 size={14} /></button>
+                        <button className="text-text-muted hover:text-red-500 p-1" onClick={() => confirmar(`Excluir a habilidade "${hab.nome}"?`) && habilidadeService.remove(hab.id).catch(() => {})}><Trash2 size={14} /></button>
                       </div>
                     )}
                   </div>

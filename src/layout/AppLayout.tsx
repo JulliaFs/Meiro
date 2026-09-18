@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { CommandPalette } from "../components/common/CommandPalette";
+import { RegistrarEstudoModal } from "../components/common/RegistrarEstudoModal";
 
 export function AppLayout() {
   const location = useLocation();
@@ -23,6 +24,7 @@ export function AppLayout() {
         </main>
       </div>
       <CommandPalette />
+      <RegistrarEstudoModal />
     </div>
   );
 }

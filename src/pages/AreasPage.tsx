@@ -6,6 +6,8 @@ import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useAreas } from "../hooks/useLiveData";
 import { areaService } from "../services";
+import { useEnvio } from "../hooks/useEnvio";
+import { confirmar } from "../lib/utils";
 import type { AreaConhecimento } from "../types";
 import { Layers } from "lucide-react";
 
@@ -18,15 +20,12 @@ function AreaForm({ area, onClose }: { area?: AreaConhecimento; onClose: () => v
   const [progresso, setProgresso] = useState(area?.progresso ?? 0);
   const [horasEstudadas, setHorasEstudadas] = useState(area?.horasEstudadas ?? 0);
   const [cor, setCor] = useState(area?.cor ?? CORES[0]);
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!nome.trim()) return;
-    if (area) {
-      await areaService.update(area.id, { nome, descricao, nivel, progresso, horasEstudadas, cor });
-    } else {
-      await areaService.create({ nome, descricao, nivel, progresso, horasEstudadas, cor });
-    }
-    onClose();
+    const payload = { nome, descricao, nivel, progresso, horasEstudadas, cor };
+    executar(() => (area ? areaService.update(area.id, payload) : areaService.create(payload)), onClose);
   }
 
   return (
@@ -60,7 +59,7 @@ function AreaForm({ area, onClose }: { area?: AreaConhecimento; onClose: () => v
           />
         ))}
       </div>
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !nome.trim()}>
         Salvar
       </button>
     </div>
@@ -96,7 +95,7 @@ export default function AreasPage() {
                 <button className="text-text-muted hover:text-text p-1" onClick={() => setModal(a)}>
                   <Pencil size={14} />
                 </button>
-                <button className="text-text-muted hover:text-red-500 p-1" onClick={() => areaService.remove(a.id)}>
+                <button className="text-text-muted hover:text-red-500 p-1" onClick={() => confirmar(`Excluir a área "${a.nome}"?`) && areaService.remove(a.id).catch(() => {})}>
                   <Trash2 size={14} />
                 </button>
               </div>

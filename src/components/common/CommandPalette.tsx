@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, GraduationCap, BookOpen, Library, NotebookPen, Brain, Layers,
-  Map, Award, RotateCcw, Target, Settings, Plus, Command,
+  Map, Award, RotateCcw, Target, Settings, Plus, Command, Clock,
 } from "lucide-react";
 import { useUiStore } from "../../store/useUiStore";
 
@@ -19,6 +19,7 @@ export function CommandPalette() {
   const open = useUiStore((s) => s.commandOpen);
   const setOpen = useUiStore((s) => s.setCommandOpen);
   const setPendingAction = useUiStore((s) => s.setPendingAction);
+  const setEstudoOpen = useUiStore((s) => s.setEstudoOpen);
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
@@ -47,6 +48,7 @@ export function CommandPalette() {
       { id: "nova-anotacao", label: "Nova Anotação", group: "Ações rápidas", icon: Plus, action: () => { setPendingAction("nova-anotacao"); navigate("/anotacoes"); } },
       { id: "novo-curso", label: "Novo Curso", group: "Ações rápidas", icon: Plus, action: () => { setPendingAction("novo-curso"); navigate("/cursos"); } },
       { id: "nova-fase", label: "Nova Fase", group: "Ações rápidas", icon: Plus, action: () => { setPendingAction("nova-fase"); navigate("/faculdade"); } },
+      { id: "registrar-estudo", label: "Registrar estudo", group: "Ações rápidas", icon: Clock, action: () => setEstudoOpen(true) },
       { id: "dashboard", label: "Dashboard", group: "Navegar", icon: LayoutDashboard, action: () => navigate("/") },
       { id: "faculdade", label: "Faculdade", group: "Navegar", icon: GraduationCap, action: () => navigate("/faculdade") },
       { id: "cursos", label: "Meus Cursos", group: "Navegar", icon: BookOpen, action: () => navigate("/cursos") },
@@ -60,7 +62,7 @@ export function CommandPalette() {
       { id: "metas", label: "Metas", group: "Navegar", icon: Target, action: () => navigate("/metas") },
       { id: "config", label: "Configurações", group: "Navegar", icon: Settings, action: () => navigate("/configuracoes") },
     ],
-    [navigate, setPendingAction]
+    [navigate, setPendingAction, setEstudoOpen]
   );
 
   const filtradas = useMemo(() => {

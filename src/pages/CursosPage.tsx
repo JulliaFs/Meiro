@@ -8,7 +8,8 @@ import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useCursos, useTodasAulas, useTodosModulos } from "../hooks/useLiveData";
 import { cursoService } from "../services";
-import { cls, statusColor, statusLabel } from "../lib/utils";
+import { useEnvio } from "../hooks/useEnvio";
+import { cls, confirmar, statusColor, statusLabel } from "../lib/utils";
 import { useUiStore } from "../store/useUiStore";
 import type { CategoriaCurso, Curso, StatusCurso } from "../types";
 
@@ -25,13 +26,12 @@ function CursoForm({ curso, onClose }: { curso?: Curso; onClose: () => void }) {
   const [dataInicio, setDataInicio] = useState(curso?.dataInicio ?? "");
   const [dataConclusao, setDataConclusao] = useState(curso?.dataConclusao ?? "");
   const [status, setStatus] = useState<StatusCurso>(curso?.status ?? "planejado");
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!nome.trim()) return;
     const payload = { nome, plataforma, link, categoria, instrutor, cargaHoraria, dataInicio, dataConclusao, status };
-    if (curso) await cursoService.update(curso.id, payload);
-    else await cursoService.create(payload);
-    onClose();
+    executar(() => (curso ? cursoService.update(curso.id, payload) : cursoService.create(payload)), onClose);
   }
 
   return (
@@ -50,7 +50,10 @@ function CursoForm({ curso, onClose }: { curso?: Curso; onClose: () => void }) {
           {STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
         </select>
       </div>
-      <input type="number" className="input" placeholder="Carga horária (h)" value={cargaHoraria} onChange={(e) => setCargaHoraria(+e.target.value)} />
+      <label className="text-xs text-text-muted block">
+        Carga horária (h)
+        <input type="number" min={0} className="input mt-1" value={cargaHoraria} onChange={(e) => setCargaHoraria(+e.target.value)} />
+      </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="text-xs text-text-muted">
           Início
@@ -61,7 +64,7 @@ function CursoForm({ curso, onClose }: { curso?: Curso; onClose: () => void }) {
           <input type="date" className="input mt-1" value={dataConclusao} onChange={(e) => setDataConclusao(e.target.value)} />
         </label>
       </div>
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Salvar</button>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !nome.trim()}>Salvar</button>
     </div>
   );
 }
@@ -81,7 +84,7 @@ export default function CursosPage() {
       setPendingAction(null);
       setModal("new");
     }
-  }, [pendingAction]);
+  }, [pendingAction, setPendingAction]);
 
   const filtrados = useMemo(
     () => (cursos ?? []).filter((c) => (filtroStatus === "todos" || c.status === filtroStatus) && (filtroCategoria === "todas" || c.categoria === filtroCategoria)),
@@ -144,11 +147,16 @@ export default function CursosPage() {
           <Card key={c.id}>
             <div className="flex items-start justify-between">
               <button className="text-left flex-1" onClick={() => navigate(`/cursos/${c.id}`)}>
-                <CardHeader title={c.nome} subtitle={`${c.plataforma}${c.instrutor ? " · " + c.instrutor : ""}`} />
+                <CardHeader title={c.nome} subtitle={[c.plataforma, c.instrutor].filter(Boolean).join(" · ")} />
               </button>
               <div className="flex gap-1 shrink-0">
                 <button className="text-text-muted hover:text-text p-1" onClick={() => setModal(c)}><Pencil size={14} /></button>
-                <button className="text-text-muted hover:text-red-500 p-1" onClick={() => cursoService.remove(c.id)}><Trash2 size={14} /></button>
+                <button
+                  className="text-text-muted hover:text-red-500 p-1"
+                  onClick={() => confirmar(`Excluir o curso "${c.nome}" com todos os módulos e aulas?`) && cursoService.remove(c.id).catch(() => {})}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
             <div className="flex items-center gap-2 mb-3 flex-wrap">

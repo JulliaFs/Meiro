@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Play, RotateCw } from "lucide-react";
+import { Plus, Trash2, Pencil, Play, RotateCw, Brain } from "lucide-react";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
+import { StudyMode } from "../components/flashcards/StudyMode";
+import { estaVencido } from "../lib/flashcards";
 import { useAreas, useFlashcards } from "../hooks/useLiveData";
+import { useEnvio } from "../hooks/useEnvio";
 import { flashcardService } from "../services";
-import { todayIso } from "../lib/utils";
+import { confirmar, todayIso } from "../lib/utils";
 import type { Dificuldade, Flashcard } from "../types";
-import { Brain } from "lucide-react";
 
 function FlashcardForm({ card, onClose }: { card?: Flashcard; onClose: () => void }) {
   const areas = useAreas();
@@ -17,8 +19,9 @@ function FlashcardForm({ card, onClose }: { card?: Flashcard; onClose: () => voi
   const [categoria, setCategoria] = useState(card?.categoria ?? "");
   const [area, setArea] = useState(card?.area ?? "");
   const [dificuldade, setDificuldade] = useState<Dificuldade>(card?.dificuldade ?? "medio");
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!pergunta.trim() || !resposta.trim()) return;
     const payload = {
       pergunta,
@@ -30,9 +33,7 @@ function FlashcardForm({ card, onClose }: { card?: Flashcard; onClose: () => voi
       acertosSeguidos: card?.acertosSeguidos ?? 0,
       proximaRevisao: card?.proximaRevisao ?? todayIso(),
     };
-    if (card) await flashcardService.update(card.id, payload);
-    else await flashcardService.create(payload);
-    onClose();
+    executar(() => (card ? flashcardService.update(card.id, payload) : flashcardService.create(payload)), onClose);
   }
 
   return (
@@ -51,55 +52,10 @@ function FlashcardForm({ card, onClose }: { card?: Flashcard; onClose: () => voi
         <option value="medio">Médio</option>
         <option value="dificil">Difícil</option>
       </select>
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Salvar</button>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !pergunta.trim() || !resposta.trim()}>
+        Salvar
+      </button>
     </div>
-  );
-}
-
-function StudyMode({ cards, onClose }: { cards: Flashcard[]; onClose: () => void }) {
-  const [idx, setIdx] = useState(0);
-  const [revelado, setRevelado] = useState(false);
-  const card = cards[idx];
-
-  async function marcar(dif: Dificuldade) {
-    const ajuste = dif === "facil" ? 2.5 : dif === "medio" ? 1.5 : 0.5;
-    const novoIntervalo = Math.max(1, Math.round(card.intervaloDias * ajuste));
-    const proxima = new Date();
-    proxima.setDate(proxima.getDate() + novoIntervalo);
-    await flashcardService.update(card.id, {
-      dificuldade: dif,
-      intervaloDias: novoIntervalo,
-      proximaRevisao: proxima.toISOString().slice(0, 10),
-      ultimaRevisao: todayIso(),
-      acertosSeguidos: dif === "dificil" ? 0 : card.acertosSeguidos + 1,
-    });
-    if (idx + 1 < cards.length) {
-      setIdx(idx + 1);
-      setRevelado(false);
-    } else {
-      onClose();
-    }
-  }
-
-  if (!card) return null;
-
-  return (
-    <Modal open onClose={onClose} title={`Revisão (${idx + 1}/${cards.length})`} wide>
-      <div className="border border-border rounded-xl p-8 text-center min-h-[160px] flex items-center justify-center">
-        <p className="text-lg font-medium">{revelado ? card.resposta : card.pergunta}</p>
-      </div>
-      {!revelado ? (
-        <button className="btn btn-primary w-full justify-center mt-4" onClick={() => setRevelado(true)}>
-          Revelar resposta
-        </button>
-      ) : (
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <button className="btn bg-red-500/15 text-red-600 justify-center" onClick={() => marcar("dificil")}>Difícil</button>
-          <button className="btn bg-amber-500/15 text-amber-600 justify-center" onClick={() => marcar("medio")}>Médio</button>
-          <button className="btn bg-emerald-500/15 text-emerald-600 justify-center" onClick={() => marcar("facil")}>Fácil</button>
-        </div>
-      )}
-    </Modal>
   );
 }
 
@@ -114,6 +70,13 @@ export default function FlashcardsPage() {
     () => (flashcards ?? []).filter((f) => filtroCategoria === "todas" || f.categoria === filtroCategoria),
     [flashcards, filtroCategoria]
   );
+  const vencidos = useMemo(() => filtrados.filter((f) => estaVencido(f)), [filtrados]);
+  // sem nada vencido, a revisão vira um treino com todos os cartões do filtro
+  const filaRevisao = vencidos.length > 0 ? vencidos : filtrados;
+
+  function excluir(f: Flashcard) {
+    if (confirmar("Excluir este flashcard?")) flashcardService.remove(f.id).catch(() => {});
+  }
 
   return (
     <div className="space-y-6">
@@ -123,8 +86,8 @@ export default function FlashcardsPage() {
           <p className="text-text-muted text-sm mt-1">Crie e revise flashcards para fixar o conteúdo.</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-secondary" onClick={() => setStudying(true)} disabled={filtrados.length === 0}>
-            <Play size={16} /> Modo revisão
+          <button className="btn btn-secondary" onClick={() => setStudying(true)} disabled={filaRevisao.length === 0}>
+            <Play size={16} /> {vencidos.length > 0 ? `Revisar ${vencidos.length} pendente(s)` : "Treinar todos"}
           </button>
           <button className="btn btn-primary" onClick={() => setModal("new")}>
             <Plus size={16} /> Novo flashcard
@@ -153,7 +116,7 @@ export default function FlashcardsPage() {
               <CardHeader title={f.pergunta} subtitle={f.resposta} />
               <div className="flex gap-1 shrink-0">
                 <button className="text-text-muted hover:text-text p-1" onClick={() => setModal(f)}><Pencil size={14} /></button>
-                <button className="text-text-muted hover:text-red-500 p-1" onClick={() => flashcardService.remove(f.id)}><Trash2 size={14} /></button>
+                <button className="text-text-muted hover:text-red-500 p-1" onClick={() => excluir(f)}><Trash2 size={14} /></button>
               </div>
             </div>
             <div className="flex gap-1 flex-wrap">
@@ -169,7 +132,7 @@ export default function FlashcardsPage() {
         <FlashcardForm card={modal !== "new" ? (modal as Flashcard) ?? undefined : undefined} onClose={() => setModal(null)} />
       </Modal>
 
-      {studying && <StudyMode cards={filtrados} onClose={() => setStudying(false)} />}
+      {studying && <StudyMode cards={filaRevisao} onClose={() => setStudying(false)} />}
     </div>
   );
 }

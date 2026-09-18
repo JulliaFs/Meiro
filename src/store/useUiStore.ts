@@ -27,6 +27,7 @@ interface UiState {
   mobileNavOpen: boolean;
   searchOpen: boolean;
   commandOpen: boolean;
+  estudoOpen: boolean;
   pendingAction: PendingAction;
   toggleTheme: () => void;
   toggleSidebar: () => void;
@@ -34,6 +35,7 @@ interface UiState {
   setMobileNavOpen: (open: boolean) => void;
   setSearchOpen: (open: boolean) => void;
   setCommandOpen: (open: boolean) => void;
+  setEstudoOpen: (open: boolean) => void;
   setPendingAction: (action: PendingAction) => void;
 }
 
@@ -44,6 +46,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   mobileNavOpen: false,
   searchOpen: false,
   commandOpen: false,
+  estudoOpen: false,
   pendingAction: null,
   toggleTheme: () => {
     const next: Theme = get().theme === "dark" ? "light" : "dark";
@@ -60,5 +63,6 @@ export const useUiStore = create<UiState>((set, get) => ({
   setMobileNavOpen: (open) => set({ mobileNavOpen: open }),
   setSearchOpen: (open) => set({ searchOpen: open }),
   setCommandOpen: (open) => set({ commandOpen: open }),
+  setEstudoOpen: (open) => set({ estudoOpen: open }),
   setPendingAction: (action) => set({ pendingAction: action }),
 }));
