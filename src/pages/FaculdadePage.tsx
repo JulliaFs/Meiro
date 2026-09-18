@@ -8,21 +8,26 @@ import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { useAnos, useFases, useTodosCapitulos } from "../hooks/useLiveData";
 import { anoService, faseService } from "../services";
+import { useEnvio } from "../hooks/useEnvio";
 import { cls, statusColor, statusLabel } from "../lib/utils";
 
-function AnoForm({ onClose }: { onClose: () => void }) {
+function AnoForm({ onClose, onCriado }: { onClose: () => void; onCriado: (id: string) => void }) {
   const anos = useAnos();
   const [numero, setNumero] = useState((anos?.length ?? 0) + 1);
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
-    await anoService.create({ numero, nome: `${numero}º Ano` });
-    onClose();
+  function salvar() {
+    if (!numero || numero < 1) return;
+    executar(async () => onCriado((await anoService.create({ numero, nome: `${numero}º Ano` })).id), onClose);
   }
 
   return (
     <div className="space-y-3">
-      <input type="number" min={1} className="input" value={numero} onChange={(e) => setNumero(+e.target.value)} />
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Salvar</button>
+      <label className="text-xs text-text-muted block">
+        Número do ano
+        <input type="number" min={1} className="input mt-1" value={numero} onChange={(e) => setNumero(+e.target.value)} />
+      </label>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !numero || numero < 1}>Salvar</button>
     </div>
   );
 }
@@ -35,20 +40,24 @@ function FaseForm({ anoId, onClose }: { anoId: string; onClose: () => void }) {
   const [dataTermino, setDataTermino] = useState("");
   const [descricao, setDescricao] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const { enviando, executar } = useEnvio();
 
-  async function salvar() {
+  function salvar() {
     if (!nome.trim()) return;
-    await faseService.create({
-      anoId,
-      nome,
-      numero,
-      dataInicio,
-      dataTermino,
-      descricao,
-      observacoes,
-      status: "pendente",
-    });
-    onClose();
+    executar(
+      () =>
+        faseService.create({
+          anoId,
+          nome,
+          numero,
+          dataInicio,
+          dataTermino,
+          descricao,
+          observacoes,
+          status: "pendente",
+        }),
+      onClose
+    );
   }
 
   return (
@@ -69,7 +78,7 @@ function FaseForm({ anoId, onClose }: { anoId: string; onClose: () => void }) {
       </div>
       <textarea className="input" placeholder="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
       <textarea className="input" placeholder="Observações" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
-      <button className="btn btn-primary w-full justify-center" onClick={salvar}>Salvar fase</button>
+      <button className="btn btn-primary w-full justify-center" onClick={salvar} disabled={enviando || !nome.trim()}>Salvar fase</button>
     </div>
   );
 }
@@ -93,11 +102,16 @@ export default function FaculdadePage() {
   const pendingAction = useUiStore((s) => s.pendingAction);
   const setPendingAction = useUiStore((s) => s.setPendingAction);
   useEffect(() => {
-    if (pendingAction === "nova-fase" && anoSelecionado) {
+    if (pendingAction !== "nova-fase" || !anos) return;
+    if (anoSelecionado) {
       setPendingAction(null);
       setModalFase(true);
+    } else if (anos.length === 0) {
+      // sem ano cadastrado não há onde criar a fase: começa pelo ano
+      setPendingAction(null);
+      setModalAno(true);
     }
-  }, [pendingAction, anoSelecionado]);
+  }, [pendingAction, anos, anoSelecionado, setPendingAction]);
 
   function progressoFase(faseId: string) {
     const caps = capitulos?.filter((c) => c.faseId === faseId) ?? [];
@@ -176,7 +190,7 @@ export default function FaculdadePage() {
       )}
 
       <Modal open={modalAno} onClose={() => setModalAno(false)} title="Novo ano">
-        <AnoForm onClose={() => setModalAno(false)} />
+        <AnoForm onClose={() => setModalAno(false)} onCriado={setAnoSelecionado} />
       </Modal>
       {anoSelecionado && (
         <Modal open={modalFase} onClose={() => setModalFase(false)} title="Nova fase" wide>

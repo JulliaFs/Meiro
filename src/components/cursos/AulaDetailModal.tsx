@@ -1,18 +1,20 @@
 import { useState } from "react";
-import { FileUp, Trash2, FileText, NotebookPen } from "lucide-react";
+import { FileUp, Trash2, FileText, NotebookPen, Loader2 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { SkillTagInput } from "../common/SkillTagInput";
-import { aulaService, arquivoService, materialService } from "../../services";
+import { aulaService, criarMaterialComArquivo, excluirMaterial } from "../../services";
 import { criarAnotacaoComOrigem } from "../../lib/anotacoes";
 import { useMateriais } from "../../hooks/useLiveData";
-import { cls, statusColor, statusLabel } from "../../lib/utils";
+import { useAutoSave } from "../../hooks/useAutoSave";
+import { notificarSucesso } from "../../store/useToastStore";
+import { cls, confirmar, statusColor, statusLabel } from "../../lib/utils";
 import type { Aula, Status } from "../../types";
 
 const TABS = ["materiais", "aprendizado", "skills"] as const;
 type Tab = typeof TABS[number];
 
 export function AulaDetailModal({
-  aula,
+  aula: aulaInicial,
   cursoLabel,
   cursoId,
   onClose,
@@ -23,36 +25,36 @@ export function AulaDetailModal({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("materiais");
+  const [enviando, setEnviando] = useState(false);
   const materiaisTodos = useMateriais();
+  const [aula, update] = useAutoSave(aulaInicial, (patch) => aulaService.update(aulaInicial.id, patch));
   const materiaisAula = materiaisTodos?.filter((m) => m.origemTipo === "aula" && m.origemId === aula.id) ?? [];
 
-  function update(patch: Partial<Aula>) {
-    aulaService.update(aula.id, patch);
-  }
-
   async function uploadArquivo(file: File) {
-    const arquivo = await arquivoService.upload(file);
-    const tipo = file.type === "application/pdf" ? "pdf" : file.type.startsWith("image/") ? "imagem" : "docx";
-    await materialService.create({
-      titulo: file.name,
-      tipo,
-      tags: [],
-      arquivoId: arquivo.path,
-      dataUpload: new Date().toISOString().slice(0, 10),
-      origemTipo: "aula",
-      origemId: aula.id,
-    });
+    setEnviando(true);
+    try {
+      await criarMaterialComArquivo(file, { origemTipo: "aula", origemId: aula.id });
+    } catch {
+      // erro já exibido
+    } finally {
+      setEnviando(false);
+    }
   }
 
   async function novaAnotacao() {
     const label = `${cursoLabel} > Aula ${aula.numero} - ${aula.nome}`;
-    await criarAnotacaoComOrigem({
-      origemTipo: "aula",
-      origemId: aula.id,
-      origemLabel: label,
-      cursoId,
-      skills: aula.skills,
-    });
+    try {
+      await criarAnotacaoComOrigem({
+        origemTipo: "aula",
+        origemId: aula.id,
+        origemLabel: label,
+        cursoId,
+        skills: aula.skills,
+      });
+      notificarSucesso("Anotação criada em Anotações.");
+    } catch {
+      // erro já exibido
+    }
   }
 
   return (
@@ -62,7 +64,7 @@ export function AulaDetailModal({
           <input className="input" placeholder="Nome da aula" value={aula.nome} onChange={(e) => update({ nome: e.target.value })} />
           <select
             value={aula.status}
-            onChange={(e) => update({ status: e.target.value as Status })}
+            onChange={(e) => update({ status: e.target.value as Status }, true)}
             className={cls("badge border-0 outline-none cursor-pointer justify-self-start", statusColor(aula.status))}
           >
             <option value="nao_iniciado">{statusLabel("nao_iniciado")}</option>
@@ -73,11 +75,17 @@ export function AulaDetailModal({
         <div className="grid grid-cols-2 gap-3">
           <label className="text-xs text-text-muted">
             Data
-            <input type="date" className="input mt-1" value={aula.data ?? ""} onChange={(e) => update({ data: e.target.value })} />
+            <input type="date" className="input mt-1" value={aula.data ?? ""} onChange={(e) => update({ data: e.target.value || undefined }, true)} />
           </label>
           <label className="text-xs text-text-muted">
             Duração (min)
-            <input type="number" className="input mt-1" value={aula.duracaoMinutos ?? ""} onChange={(e) => update({ duracaoMinutos: +e.target.value })} />
+            <input
+              type="number"
+              min={0}
+              className="input mt-1"
+              value={aula.duracaoMinutos ?? ""}
+              onChange={(e) => update({ duracaoMinutos: e.target.value === "" ? undefined : +e.target.value })}
+            />
           </label>
         </div>
       </div>
@@ -93,15 +101,31 @@ export function AulaDetailModal({
 
       {tab === "materiais" && (
         <div className="space-y-3">
-          <label className="btn btn-secondary cursor-pointer w-full justify-center">
-            <FileUp size={14} /> Upload de PDF / material complementar / certificado parcial
-            <input type="file" accept=".pdf,.doc,.docx,image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadArquivo(e.target.files[0])} />
+          <label className={cls("btn btn-secondary cursor-pointer w-full justify-center", enviando && "opacity-60 pointer-events-none")}>
+            {enviando ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />}
+            {enviando ? "Enviando..." : "Upload de PDF / material complementar / certificado parcial"}
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,image/*"
+              className="hidden"
+              disabled={enviando}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) uploadArquivo(file);
+              }}
+            />
           </label>
           <div className="space-y-2">
             {materiaisAula.map((m) => (
               <div key={m.id} className="flex items-center justify-between border border-border rounded-lg p-2 text-sm">
                 <span className="flex items-center gap-2 truncate"><FileText size={14} /> {m.titulo}</span>
-                <button className="text-text-muted hover:text-red-500" onClick={() => materialService.remove(m.id)}><Trash2 size={14} /></button>
+                <button
+                  className="text-text-muted hover:text-red-500"
+                  onClick={() => confirmar(`Excluir "${m.titulo}"?`) && excluirMaterial(m).catch(() => {})}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             ))}
           </div>
@@ -121,7 +145,7 @@ export function AulaDetailModal({
           <p className="text-xs text-text-muted mb-2">
             Ao concluir esta aula, as skills vinculadas atualizam automaticamente o progresso no Mapa de Carreira.
           </p>
-          <SkillTagInput value={aula.skills} onChange={(skills) => update({ skills })} />
+          <SkillTagInput value={aula.skills} onChange={(skills) => update({ skills }, true)} />
         </div>
       )}
     </Modal>

@@ -14,9 +14,7 @@ export function LandingFooter() {
         </div>
 
         <div className="flex items-center gap-5 text-sm text-text-muted">
-          <a href="#" className="hover:text-text transition-colors">{t.footer.privacy}</a>
-          <a href="#" className="hover:text-text transition-colors">{t.footer.terms}</a>
-          <a href="mailto:hello@meiro.app" className="hover:text-text transition-colors flex items-center gap-1.5">
+          <a href="mailto:jf1915327@gmail.com" className="hover:text-text transition-colors flex items-center gap-1.5">
             <Mail size={14} />
             {t.footer.contact}
           </a>

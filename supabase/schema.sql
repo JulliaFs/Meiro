@@ -1,4 +1,4 @@
--- JU Academy OS — schema Supabase
+-- Meiro — schema Supabase
 -- Rode este script no SQL Editor do seu projeto Supabase.
 -- Todas as tabelas usam user_id + RLS para que cada usuário veja só os seus dados.
 
@@ -133,7 +133,7 @@ create table certificados (
   data date,
   carga_horaria numeric not null default 0,
   area text,
-  arquivo_id uuid,
+  arquivo_id text, -- caminho no Storage: <user_id>/<uuid>-nome.ext
   link_validacao text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -149,7 +149,7 @@ create table materiais (
   tags text[] not null default '{}',
   area text,
   pasta text,
-  arquivo_id uuid,
+  arquivo_id text, -- caminho no Storage: <user_id>/<uuid>-nome.ext
   url text,
   data_upload date not null default current_date,
   origem_tipo text,

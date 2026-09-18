@@ -3,10 +3,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-// Defina ALLOWED_ORIGIN como a URL do app (ex.: https://meiro.app) nos secrets
-// da function. Sem isso, qualquer site poderia chamar a function pelo navegador
-// com a sessao do visitante.
-const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "";
+// So o app pode chamar a function pelo navegador; sem isso, qualquer site poderia
+// usa-la com a sessao do visitante. Para outro dominio, defina o secret ALLOWED_ORIGIN.
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") || "https://withmeiro.xyz";
 
 function corsHeaders(origin: string | null) {
   const allowed = ALLOWED_ORIGIN && origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN;
@@ -64,7 +63,11 @@ Deno.serve(async (req) => {
     if (signupError) return fail("Nao foi possivel consultar a lista de espera.", 500);
     if (!signup) return fail("Este e-mail nao esta na lista de espera.", 400);
 
-    const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email);
+    // O link do convite leva direto para a tela de escolher a senha. A URL precisa
+    // estar em Authentication > URL Configuration > Redirect URLs no Supabase.
+    const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${ALLOWED_ORIGIN}/definir-senha`,
+    });
     if (error) return fail(error.message, 400);
 
     return new Response(JSON.stringify({ ok: true, userId: data.user?.id }), {

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Clock, CheckCircle2, Sparkles, FileText, NotebookPen, BookOpen,
-  CircleDot, Target, TrendingUp, GraduationCap, Award,
+  CircleDot, Target, TrendingUp, GraduationCap, Award, Plus,
 } from "lucide-react";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -22,7 +22,9 @@ import {
   useTodosCapitulos,
   useTodosModulos,
 } from "../hooks/useLiveData";
-import { todayIso } from "../lib/utils";
+import { parseDate, toIsoDate, todayIso } from "../lib/utils";
+import { useUiStore } from "../store/useUiStore";
+import { useAuthStore } from "../store/useAuthStore";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -43,6 +45,9 @@ export default function DashboardPage() {
   const sessoes = useSessoes();
   const flashcards = useFlashcards();
   const anotacoes = useAnotacoes();
+  const setEstudoOpen = useUiStore((s) => s.setEstudoOpen);
+  const nomeUsuario = useAuthStore((s) => (s.session?.user.user_metadata?.nome as string | undefined)?.trim());
+  const primeiroNome = nomeUsuario?.split(/\s+/)[0] || "Estudante";
 
   const hoje = todayIso();
   const dataFmt = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
@@ -75,7 +80,7 @@ export default function DashboardPage() {
     let atual = 0;
     let anterior = 0;
     (sessoes ?? []).forEach((s) => {
-      const d = new Date(s.data);
+      const d = parseDate(s.data);
       if (d >= inicioSemana) atual += s.minutos;
       else if (d >= inicioSemanaAnterior && d < inicioSemana) anterior += s.minutos;
     });
@@ -85,13 +90,22 @@ export default function DashboardPage() {
   const deltaSemanal = horasSemanaAnterior > 0 ? Math.round(((horasSemanaAtual - horasSemanaAnterior) / horasSemanaAnterior) * 100) : 0;
   const pctMetaSemanal = Math.min(100, Math.round((horasSemanaAtual / META_SEMANAL_HORAS) * 100));
 
+  // soma por dia dos últimos 14 dias (dias sem estudo aparecem como 0)
   const chartSemana = useMemo(() => {
-    if (!sessoes) return [];
-    const last14 = [...sessoes].sort((a, b) => a.data.localeCompare(b.data)).slice(-14);
-    return last14.map((s) => ({
-      dia: new Date(s.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-      horas: +(s.minutos / 60).toFixed(1),
-    }));
+    if (!sessoes || sessoes.length === 0) return [];
+    const minutosPorDia: Record<string, number> = {};
+    sessoes.forEach((s) => { minutosPorDia[s.data] = (minutosPorDia[s.data] ?? 0) + s.minutos; });
+    const dias = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const iso = toIsoDate(d);
+      dias.push({
+        dia: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        horas: +((minutosPorDia[iso] ?? 0) / 60).toFixed(1),
+      });
+    }
+    return dias.some((d) => d.horas > 0) ? dias : [];
   }, [sessoes]);
 
   // tarefas do dia: derivadas de dados reais, todas acionáveis
@@ -99,9 +113,11 @@ export default function DashboardPage() {
     const tarefas: { id: string; label: string; to: string }[] = [];
 
     if (capituloAtual) {
-      tarefas.push({ id: "cap", label: `Estudar: ${capituloAtual.nome}`, to: "/faculdade" });
+      const faseDoCapitulo = fases?.find((f) => f.id === capituloAtual.faseId);
+      const to = faseDoCapitulo ? `/faculdade/${faseDoCapitulo.anoId}/${faseDoCapitulo.id}` : "/faculdade";
+      tarefas.push({ id: "cap", label: `Estudar: ${capituloAtual.nome}`, to });
       if (capituloAtual.notaFastTest === undefined) {
-        tarefas.push({ id: "fast", label: "Fazer Fast Test do capítulo atual", to: "/faculdade" });
+        tarefas.push({ id: "fast", label: "Fazer Fast Test do capítulo atual", to });
       }
     }
 
@@ -120,7 +136,7 @@ export default function DashboardPage() {
 
     return tarefas;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [capituloAtual, revisoesAtrasadasOuHoje, cursosEmAndamento, modulos, aulas]);
+  }, [capituloAtual, fases, revisoesAtrasadasOuHoje, cursosEmAndamento, modulos, aulas]);
 
   // timeline de atividades recentes a partir de timestamps reais
   const atividades = useMemo(() => {
@@ -144,15 +160,23 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* 1. HEADER — saudação + data, somente */}
       <div>
-        <h1 className="page-title text-text">{greeting()}, Estudante</h1>
+        <h1 className="page-title text-text">{greeting()}, {primeiroNome}</h1>
         <p className="text-text-muted text-sm mt-1 capitalize">{dataFmt}</p>
       </div>
 
       {/* KPI principal único — largura total */}
       <Card className="card-dark p-5">
-        <p className="label-mono text-white/60 mb-1.5 flex items-center gap-1.5">
-          <TrendingUp size={12} /> Horas estudadas · semana
-        </p>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <p className="label-mono text-white/60 flex items-center gap-1.5">
+            <TrendingUp size={12} /> Horas estudadas · semana
+          </p>
+          <button
+            onClick={() => setEstudoOpen(true)}
+            className="text-xs text-white/90 bg-white/10 hover:bg-white/20 rounded-lg px-2.5 py-1 flex items-center gap-1 transition-colors"
+          >
+            <Plus size={12} /> Registrar estudo
+          </button>
+        </div>
         <div className="flex items-baseline gap-2">
           <p className="metric-number text-white">{horasSemanaAtual.toFixed(1)}h</p>
           <span className="text-xs text-white/60">meta {META_SEMANAL_HORAS}h</span>
@@ -193,7 +217,12 @@ export default function DashboardPage() {
       <Card>
         <CardHeader title="Progresso semanal" subtitle="Horas estudadas nos últimos 14 dias" />
         {chartSemana.length === 0 ? (
-          <EmptyState icon={<Clock size={22} />} title="Ainda sem dados de estudo" description="Registre sessões de estudo para visualizar sua evolução aqui." />
+          <EmptyState
+            icon={<Clock size={22} />}
+            title="Ainda sem dados de estudo"
+            description="Registre sessões de estudo para visualizar sua evolução aqui."
+            action={<button className="btn btn-primary" onClick={() => setEstudoOpen(true)}><Plus size={16} /> Registrar estudo</button>}
+          />
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartSemana}>

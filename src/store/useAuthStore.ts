@@ -2,11 +2,21 @@ import { create } from "zustand";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabaseClient";
 
+// Links de convite e de recuperação chegam com "#...&type=invite|recovery" (ou
+// "#error=..." quando expiraram). O cliente do Supabase consome e apaga esse hash
+// de forma assíncrona, então ele é lido aqui, ainda durante o carregamento dos módulos.
+const hashAuth = new URLSearchParams(window.location.hash.slice(1));
+const tipoLinkAuth = hashAuth.get("type");
+
 interface AuthState {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
   adminLoading: boolean;
+  /** Chegou por convite/recuperação e ainda precisa escolher uma senha. */
+  definirSenhaPendente: boolean;
+  /** Link de convite/recuperação inválido ou expirado. */
+  erroLinkAuth: string | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -16,6 +26,8 @@ export const useAuthStore = create<AuthState>(() => ({
   loading: true,
   isAdmin: false,
   adminLoading: true,
+  definirSenhaPendente: tipoLinkAuth === "invite" || tipoLinkAuth === "recovery",
+  erroLinkAuth: hashAuth.get("error_description") ?? hashAuth.get("error"),
   signIn: async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error?.message ?? null };
@@ -58,7 +70,8 @@ supabase.auth.getSession().then(({ data }) => {
   scheduleAdminRefresh(data.session);
 });
 
-supabase.auth.onAuthStateChange((_event, session) => {
+supabase.auth.onAuthStateChange((event, session) => {
   useAuthStore.setState({ session, loading: false });
+  if (event === "PASSWORD_RECOVERY") useAuthStore.setState({ definirSenhaPendente: true });
   scheduleAdminRefresh(session);
 });
