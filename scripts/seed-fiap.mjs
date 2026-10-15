@@ -60,9 +60,9 @@ const metas = [
 const TABELAS = ["anos", "fases", "capitulos", "flashcards", "metas"];
 
 const capInsert = (faseVar, c, status) => `
-  insert into capitulos (user_id, fase_id, numero, nome, descricao, resumo, status)
+  insert into public.capitulos (user_id, fase_id, numero, nome, descricao, resumo, status)
   select uid, ${faseVar}, ${c.numero}, ${q(c.nome)}, ${q(c.descricao)}, ${q(c.resumo ?? null)}, '${status}'
-  where not exists (select 1 from capitulos where fase_id = ${faseVar} and numero = ${c.numero});`;
+  where not exists (select 1 from public.capitulos where fase_id = ${faseVar} and numero = ${c.numero});`;
 
 const sql = `-- Gerado por scripts/seed-fiap.mjs em ${new Date().toISOString().slice(0, 10)}. Não edite à mão.
 -- Rode inteiro no SQL Editor do Supabase (projeto Meiro). Pode rodar de novo: não duplica.
@@ -82,22 +82,22 @@ begin
   if uid is null then raise exception 'Usuário % não encontrado', ${q(email)}; end if;
 
   -- 1) Ano 1
-  select id into ano from anos where user_id = uid and numero = 1 order by created_at limit 1;
+  select id into ano from public.anos where user_id = uid and numero = 1 order by created_at limit 1;
   if ano is null then
-    insert into anos (user_id, numero, nome) values (uid, 1, '1º ano · ADS FIAP 2026') returning id into ano;
+    insert into public.anos (user_id, numero, nome) values (uid, 1, '1º ano · ADS FIAP 2026') returning id into ano;
   end if;
 
   -- 2) Fases
-  select id into f6 from fases where ano_id = ano and numero = 6 limit 1;
+  select id into f6 from public.fases where ano_id = ano and numero = 6 limit 1;
   if f6 is null then
-    insert into fases (user_id, ano_id, numero, nome, descricao, status)
+    insert into public.fases (user_id, ano_id, numero, nome, descricao, status)
     values (uid, ano, 6, 'Fase 6 · Model', 'Java + JDBC + Oracle. Atividades entregues e quiz avaliado.', 'concluida')
     returning id into f6;
   end if;
 
-  select id into f7 from fases where ano_id = ano and numero = 7 limit 1;
+  select id into f7 from public.fases where ano_id = ano and numero = 7 limit 1;
   if f7 is null then
-    insert into fases (user_id, ano_id, numero, nome, data_inicio, data_termino, descricao, status)
+    insert into public.fases (user_id, ano_id, numero, nome, data_inicio, data_termino, descricao, status)
     values (uid, ano, 7, 'Fase 7 · Integration', '2026-10-14', '2026-11-27',
       'Conectar front-end, back-end e banco e concluir o projeto Fintech (Spring Boot + Oracle; React, Vite, Next.js).',
       'em_andamento')
@@ -112,19 +112,19 @@ ${caps7.map((c) => capInsert("f7", c, "nao_iniciado")).join("")}
 ${metas
   .map(
     ([d, p]) => `
-  insert into metas (user_id, descricao, prazo, categoria)
+  insert into public.metas (user_id, descricao, prazo, categoria)
   select uid, ${q(d)}, '${p}', 'mensal'
-  where not exists (select 1 from metas where user_id = uid and descricao = ${q(d)});`
+  where not exists (select 1 from public.metas where user_id = uid and descricao = ${q(d)});`
   )
   .join("")}
 
   -- 5) Flashcards (${flashcards.length}), já vencidos hoje para entrar nas revisões
-  insert into flashcards (user_id, pergunta, resposta, categoria, area, proxima_revisao)
+  insert into public.flashcards (user_id, pergunta, resposta, categoria, area, proxima_revisao)
   select uid, v.pergunta, v.resposta, v.categoria, 'Faculdade', current_date
   from (values
 ${flashcards.map((f) => `    (${q(f.pergunta)}, ${q(f.resposta)}, ${q(f.categoria)})`).join(",\n")}
   ) as v(pergunta, resposta, categoria)
-  where not exists (select 1 from flashcards x where x.user_id = uid and x.pergunta = v.pergunta);
+  where not exists (select 1 from public.flashcards x where x.user_id = uid and x.pergunta = v.pergunta);
 end $$;
 `;
 
