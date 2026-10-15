@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "../ui/Modal";
 import { flashcardService } from "../../services";
 import { toIsoDate, todayIso } from "../../lib/utils";
@@ -41,22 +41,51 @@ export function StudyMode({ cards: cardsIniciais, onClose }: { cards: Flashcard[
     }
   }
 
+  // Atalhos: espaço/Enter revela; 1, 2, 3 = difícil, médio, fácil
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (!revelado && (e.key === " " || e.key === "Enter")) {
+        e.preventDefault();
+        setRevelado(true);
+      } else if (revelado && ["1", "2", "3"].includes(e.key)) {
+        marcar(e.key === "1" ? "dificil" : e.key === "2" ? "medio" : "facil");
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   if (!card) return null;
+
+  // Texto longo ou com alternativas fica alinhado à esquerda para ler melhor
+  const curto = (t: string) => t.length < 120 && !t.includes("\n");
 
   return (
     <Modal open onClose={onClose} title={`Revisão (${idx + 1}/${cards.length})`} wide>
-      <div className="border border-border rounded-xl p-8 text-center min-h-[160px] flex items-center justify-center">
-        <p className="text-lg font-medium whitespace-pre-wrap">{revelado ? card.resposta : card.pergunta}</p>
+      <div className="h-1 rounded-full bg-border overflow-hidden mb-4">
+        <div className="h-full bg-brand transition-all" style={{ width: `${(idx / cards.length) * 100}%` }} />
+      </div>
+      {card.categoria && <p className="text-xs text-text-muted mb-2">{card.categoria}</p>}
+      <div className="border border-border rounded-xl p-4 sm:p-6 min-h-[140px] max-h-[55vh] overflow-y-auto">
+        <p className={`text-base sm:text-lg font-medium whitespace-pre-wrap ${curto(card.pergunta) ? "text-center" : "text-left"}`}>
+          {card.pergunta}
+        </p>
+        {revelado && (
+          <p className={`mt-4 pt-4 border-t border-border text-sm sm:text-base whitespace-pre-wrap text-emerald-600 ${curto(card.resposta) ? "text-center" : "text-left"}`}>
+            {card.resposta}
+          </p>
+        )}
       </div>
       {!revelado ? (
         <button className="btn btn-primary w-full justify-center mt-4" onClick={() => setRevelado(true)}>
-          Revelar resposta
+          Revelar resposta <span className="hidden sm:inline text-xs opacity-70">(espaço)</span>
         </button>
       ) : (
         <div className="grid grid-cols-3 gap-2 mt-4">
-          <button className="btn bg-red-500/15 text-red-600 justify-center" disabled={salvando} onClick={() => marcar("dificil")}>Difícil</button>
-          <button className="btn bg-amber-500/15 text-amber-600 justify-center" disabled={salvando} onClick={() => marcar("medio")}>Médio</button>
-          <button className="btn bg-emerald-500/15 text-emerald-600 justify-center" disabled={salvando} onClick={() => marcar("facil")}>Fácil</button>
+          <button className="btn bg-red-500/15 text-red-600 justify-center" disabled={salvando} onClick={() => marcar("dificil")}>Difícil <span className="hidden sm:inline text-xs opacity-70">1</span></button>
+          <button className="btn bg-amber-500/15 text-amber-600 justify-center" disabled={salvando} onClick={() => marcar("medio")}>Médio <span className="hidden sm:inline text-xs opacity-70">2</span></button>
+          <button className="btn bg-emerald-500/15 text-emerald-600 justify-center" disabled={salvando} onClick={() => marcar("facil")}>Fácil <span className="hidden sm:inline text-xs opacity-70">3</span></button>
         </div>
       )}
     </Modal>

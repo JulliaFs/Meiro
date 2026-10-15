@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Pencil, Play, RotateCw, Brain } from "lucide-react";
-import { Card, CardHeader } from "../components/ui/Card";
+import { Plus, Trash2, Pencil, Play, RotateCw, Brain, Search } from "lucide-react";
+import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { StudyMode } from "../components/flashcards/StudyMode";
-import { estaVencido } from "../lib/flashcards";
+import { estaVencido, montarFila } from "../lib/flashcards";
 import { useAreas, useFlashcards } from "../hooks/useLiveData";
 import { useEnvio } from "../hooks/useEnvio";
 import { flashcardService } from "../services";
@@ -59,17 +59,38 @@ function FlashcardForm({ card, onClose }: { card?: Flashcard; onClose: () => voi
   );
 }
 
+const POR_PAGINA = 30;
+
 export default function FlashcardsPage() {
   const flashcards = useFlashcards();
   const [modal, setModal] = useState<"new" | Flashcard | null>(null);
-  const [studying, setStudying] = useState(false);
+  const [fila, setFila] = useState<Flashcard[] | null>(null);
   const [filtroCategoria, setFiltroCategoria] = useState("todas");
+  const [busca, setBusca] = useState("");
+  const [visiveis, setVisiveis] = useState(POR_PAGINA);
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
 
-  const categorias = useMemo(() => Array.from(new Set((flashcards ?? []).map((f) => f.categoria).filter(Boolean))), [flashcards]);
-  const filtrados = useMemo(
-    () => (flashcards ?? []).filter((f) => filtroCategoria === "todas" || f.categoria === filtroCategoria),
-    [flashcards, filtroCategoria]
+  const categorias = useMemo(
+    () => Array.from(new Set((flashcards ?? []).map((f) => f.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true })),
+    [flashcards]
   );
+  const filtrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return (flashcards ?? []).filter(
+      (f) =>
+        (filtroCategoria === "todas" || f.categoria === filtroCategoria) &&
+        (!termo || f.pergunta.toLowerCase().includes(termo) || f.resposta.toLowerCase().includes(termo))
+    );
+  }, [flashcards, filtroCategoria, busca]);
+
+  function alternar(id: string) {
+    setAbertos((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
   const vencidos = useMemo(() => filtrados.filter((f) => estaVencido(f)), [filtrados]);
   // sem nada vencido, a revisão vira um treino com todos os cartões do filtro
   const filaRevisao = vencidos.length > 0 ? vencidos : filtrados;
@@ -86,8 +107,8 @@ export default function FlashcardsPage() {
           <p className="text-text-muted text-sm mt-1">Crie e revise flashcards para fixar o conteúdo.</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn btn-secondary" onClick={() => setStudying(true)} disabled={filaRevisao.length === 0}>
-            <Play size={16} /> {vencidos.length > 0 ? `Revisar ${vencidos.length} pendente(s)` : "Treinar todos"}
+          <button className="btn btn-secondary" onClick={() => setFila(montarFila(filaRevisao, 20))} disabled={filaRevisao.length === 0}>
+            <Play size={16} /> {vencidos.length > 0 ? `Revisar ${Math.min(20, vencidos.length)} de ${vencidos.length}` : "Treinar 20"}
           </button>
           <button className="btn btn-primary" onClick={() => setModal("new")}>
             <Plus size={16} /> Novo flashcard
@@ -95,10 +116,17 @@ export default function FlashcardsPage() {
         </div>
       </div>
 
-      <select className="input w-auto" value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
-        <option value="todas">Todas as categorias</option>
-        {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
-      </select>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input className="input pl-9" placeholder="Buscar na pergunta ou resposta" value={busca} onChange={(e) => { setBusca(e.target.value); setVisiveis(POR_PAGINA); }} />
+        </div>
+        <select className="input sm:w-auto" value={filtroCategoria} onChange={(e) => { setFiltroCategoria(e.target.value); setVisiveis(POR_PAGINA); }}>
+          <option value="todas">Todas as categorias</option>
+          {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      {filtrados.length > 0 && <p className="text-xs text-text-muted">{filtrados.length} flashcard(s) · toque num cartão para ver a resposta</p>}
 
       {filtrados.length === 0 && (
         <EmptyState
@@ -110,13 +138,20 @@ export default function FlashcardsPage() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtrados.map((f) => (
+        {filtrados.slice(0, visiveis).map((f) => (
           <Card key={f.id}>
-            <div className="flex items-start justify-between">
-              <CardHeader title={f.pergunta} subtitle={f.resposta} />
+            <div className="flex items-start justify-between gap-2 mb-3">
+              <button className="text-left min-w-0 flex-1" onClick={() => alternar(f.id)} aria-expanded={abertos.has(f.id)}>
+                <p className="text-sm font-semibold text-text whitespace-pre-wrap line-clamp-6">{f.pergunta}</p>
+                {abertos.has(f.id) ? (
+                  <p className="text-sm text-emerald-600 mt-2 whitespace-pre-wrap">{f.resposta}</p>
+                ) : (
+                  <p className="text-xs text-text-muted mt-2">Ver resposta</p>
+                )}
+              </button>
               <div className="flex gap-1 shrink-0">
-                <button className="text-text-muted hover:text-text p-1" onClick={() => setModal(f)}><Pencil size={14} /></button>
-                <button className="text-text-muted hover:text-red-500 p-1" onClick={() => excluir(f)}><Trash2 size={14} /></button>
+                <button className="text-text-muted hover:text-text p-2" aria-label="Editar" onClick={() => setModal(f)}><Pencil size={14} /></button>
+                <button className="text-text-muted hover:text-red-500 p-2" aria-label="Excluir" onClick={() => excluir(f)}><Trash2 size={14} /></button>
               </div>
             </div>
             <div className="flex gap-1 flex-wrap">
@@ -127,12 +162,17 @@ export default function FlashcardsPage() {
           </Card>
         ))}
       </div>
+      {filtrados.length > visiveis && (
+        <button className="btn btn-secondary w-full justify-center" onClick={() => setVisiveis((v) => v + POR_PAGINA)}>
+          Mostrar mais ({filtrados.length - visiveis} restantes)
+        </button>
+      )}
 
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal === "new" ? "Novo flashcard" : "Editar flashcard"}>
         <FlashcardForm card={modal !== "new" ? (modal as Flashcard) ?? undefined : undefined} onClose={() => setModal(null)} />
       </Modal>
 
-      {studying && <StudyMode cards={filaRevisao} onClose={() => setStudying(false)} />}
+      {fila && <StudyMode cards={fila} onClose={() => setFila(null)} />}
     </div>
   );
 }

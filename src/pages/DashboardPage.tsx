@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Clock, CheckCircle2, Sparkles, FileText, NotebookPen, BookOpen,
-  CircleDot, Target, TrendingUp, GraduationCap, Award, Plus,
+  CircleDot, Target, TrendingUp, GraduationCap, Award, Plus, CalendarClock,
 } from "lucide-react";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -17,6 +17,7 @@ import {
   useCursos,
   useFases,
   useFlashcards,
+  useMetas,
   useSessoes,
   useTodasAulas,
   useTodosCapitulos,
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const sessoes = useSessoes();
   const flashcards = useFlashcards();
   const anotacoes = useAnotacoes();
+  const metas = useMetas();
   const setEstudoOpen = useUiStore((s) => s.setEstudoOpen);
   const nomeUsuario = useAuthStore((s) => (s.session?.user.user_metadata?.nome as string | undefined)?.trim());
   const primeiroNome = nomeUsuario?.split(/\s+/)[0] || "Estudante";
@@ -52,8 +54,24 @@ export default function DashboardPage() {
   const hoje = todayIso();
   const dataFmt = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
 
-  const capituloAtual = capitulos?.find((c) => c.status === "em_andamento");
-  const faseAtual = fases?.find((f) => f.id === capituloAtual?.faseId) ?? fases?.[0];
+  const capituloEmAndamento = capitulos?.find((c) => c.status === "em_andamento");
+  // fase atual: a do capítulo em andamento; senão a fase marcada em andamento; senão a primeira não concluída
+  const faseAtual =
+    fases?.find((f) => f.id === capituloEmAndamento?.faseId) ??
+    fases?.find((f) => f.status === "em_andamento") ??
+    fases?.find((f) => f.status !== "concluida") ??
+    fases?.[0];
+  // sem capítulo em andamento, sugere o próximo não concluído da fase atual
+  const capituloAtual =
+    capituloEmAndamento ??
+    capitulos?.filter((c) => c.faseId === faseAtual?.id && c.status !== "concluido").sort((a, b) => a.numero - b.numero)[0];
+
+  // prazos das metas que ainda não passaram, do mais próximo ao mais distante
+  const proximosPrazos = (metas ?? [])
+    .filter((m) => m.prazo && m.prazo >= hoje && m.progresso < 100)
+    .sort((a, b) => a.prazo.localeCompare(b.prazo))
+    .slice(0, 3)
+    .map((m) => ({ ...m, dias: Math.round((parseDate(m.prazo).getTime() - parseDate(hoje).getTime()) / 86400000) }));
   const cursosEmAndamento = cursos?.filter((c) => c.status === "em_andamento") ?? [];
   const revisoesAtrasadasOuHoje = flashcards?.filter((f) => !f.proximaRevisao || f.proximaRevisao <= hoje) ?? [];
 
@@ -115,8 +133,8 @@ export default function DashboardPage() {
     if (capituloAtual) {
       const faseDoCapitulo = fases?.find((f) => f.id === capituloAtual.faseId);
       const to = faseDoCapitulo ? `/faculdade/${faseDoCapitulo.anoId}/${faseDoCapitulo.id}` : "/faculdade";
-      tarefas.push({ id: "cap", label: `Estudar: ${capituloAtual.nome}`, to });
-      if (capituloAtual.notaFastTest === undefined) {
+      tarefas.push({ id: "cap", label: `${capituloAtual.status === "em_andamento" ? "Estudar" : "Próximo capítulo"}: ${capituloAtual.nome}`, to });
+      if (capituloAtual.status === "em_andamento" && capituloAtual.notaFastTest === undefined) {
         tarefas.push({ id: "fast", label: "Fazer Fast Test do capítulo atual", to });
       }
     }
@@ -188,6 +206,24 @@ export default function DashboardPage() {
           {pctMetaSemanal}% da meta {deltaSemanal !== 0 && <span>· {deltaSemanal > 0 ? "+" : ""}{deltaSemanal}% vs. semana passada</span>}
         </p>
       </Card>
+
+      {/* PRAZOS — contagem regressiva das metas com data */}
+      {proximosPrazos.length > 0 && (
+        <Card>
+          <CardHeader title="Próximos prazos" action={<CalendarClock size={16} className="text-text-muted" />} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {proximosPrazos.map((m) => (
+              <Link key={m.id} to="/metas" className={`rounded-lg border p-3 transition-colors hover:bg-surface-2 ${m.dias <= 7 ? "border-red-500/40" : "border-border"}`}>
+                <p className={`text-2xl font-semibold ${m.dias <= 7 ? "text-red-600" : "text-text"}`}>
+                  {m.dias === 0 ? "Hoje" : m.dias === 1 ? "Amanhã" : `${m.dias} dias`}
+                </p>
+                <p className="text-sm text-text mt-1 line-clamp-2">{m.descricao}</p>
+                <p className="text-2xs text-text-muted mt-1">{parseDate(m.prazo).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</p>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* 2. HOJE — prioridade máxima, tudo acionável */}
       <Card>
