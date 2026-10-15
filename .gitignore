@@ -32,3 +32,6 @@ supabase/.temp/
 # Arquivos locais do Windows / capturas de tela
 desktop.ini
 Captura de tela *.png
+
+# Seeds gerados (contêm o e-mail da conta)
+supabase/seeds/*.sql
