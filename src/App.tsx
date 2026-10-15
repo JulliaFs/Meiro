@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "./layout/AppLayout";
 import { ProtectedRoute } from "./layout/ProtectedRoute";
 import { AdminRoute } from "./layout/AdminRoute";
@@ -59,6 +59,8 @@ export default function App() {
             </Route>
           </Route>
         </Route>
+        {/* URL desconhecida (ex.: /dashboard) volta para o início em vez de tela em branco */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
     </BrowserRouter>
