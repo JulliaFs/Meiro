@@ -54,17 +54,19 @@ export default function DashboardPage() {
   const hoje = todayIso();
   const dataFmt = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
 
-  const capituloEmAndamento = capitulos?.find((c) => c.status === "em_andamento");
-  // fase atual: a do capítulo em andamento; senão a fase marcada em andamento; senão a primeira não concluída
+  // fase atual: a que está no período de hoje; senão a mais recente em andamento;
+  // senão a do capítulo em andamento; senão a primeira não concluída
+  const fasesOrdenadas = [...(fases ?? [])].sort((a, b) => b.numero - a.numero);
   const faseAtual =
-    fases?.find((f) => f.id === capituloEmAndamento?.faseId) ??
-    fases?.find((f) => f.status === "em_andamento") ??
+    fasesOrdenadas.find((f) => f.dataInicio && f.dataTermino && f.dataInicio <= hoje && hoje <= f.dataTermino) ??
+    fasesOrdenadas.find((f) => f.status === "em_andamento") ??
+    fases?.find((f) => f.id === capitulos?.find((c) => c.status === "em_andamento")?.faseId) ??
     fases?.find((f) => f.status !== "concluida") ??
     fases?.[0];
-  // sem capítulo em andamento, sugere o próximo não concluído da fase atual
+  // capítulo atual sempre da fase atual: o em andamento, senão o próximo não concluído
+  const capitulosDaFase = (capitulos ?? []).filter((c) => c.faseId === faseAtual?.id).sort((a, b) => a.numero - b.numero);
   const capituloAtual =
-    capituloEmAndamento ??
-    capitulos?.filter((c) => c.faseId === faseAtual?.id && c.status !== "concluido").sort((a, b) => a.numero - b.numero)[0];
+    capitulosDaFase.find((c) => c.status === "em_andamento") ?? capitulosDaFase.find((c) => c.status !== "concluido");
 
   // prazos das metas que ainda não passaram, do mais próximo ao mais distante
   const proximosPrazos = (metas ?? [])
@@ -140,7 +142,13 @@ export default function DashboardPage() {
     }
 
     if (revisoesAtrasadasOuHoje.length > 0) {
-      tarefas.push({ id: "rev", label: `Revisar ${revisoesAtrasadasOuHoje.length} flashcard(s)`, to: "/revisoes" });
+      tarefas.push({
+        id: "rev",
+        label: revisoesAtrasadasOuHoje.length > 20
+          ? `Revisar 20 flashcards de hoje (${revisoesAtrasadasOuHoje.length} na fila)`
+          : `Revisar ${revisoesAtrasadasOuHoje.length} flashcard(s)`,
+        to: "/revisoes",
+      });
     }
 
     cursosEmAndamento.slice(0, 2).forEach((c) => {
