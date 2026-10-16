@@ -128,7 +128,9 @@ export default function FlashcardsPage() {
       </div>
       {filtrados.length > 0 && <p className="text-xs text-text-muted">{filtrados.length} flashcard(s) · toque num cartão para ver a resposta</p>}
 
-      {filtrados.length === 0 && (
+      {flashcards === undefined && <Card><p className="text-sm text-text-muted animate-pulse">Carregando seus flashcards…</p></Card>}
+
+      {flashcards !== undefined && filtrados.length === 0 && (
         <EmptyState
           icon={<Brain size={24} />}
           title="Nenhum flashcard por aqui"

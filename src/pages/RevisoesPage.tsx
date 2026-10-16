@@ -49,6 +49,15 @@ export default function RevisoesPage() {
     };
   }, [flashcards, hoje, filtro]);
 
+  if (flashcards === undefined) {
+    return (
+      <div className="space-y-6">
+        <h1 className="page-title">Revisões</h1>
+        <Card><p className="text-sm text-text-muted animate-pulse">Carregando seus flashcards…</p></Card>
+      </div>
+    );
+  }
+
   const qtdSessao = tamanho > 0 ? Math.min(tamanho, pendentes.length) : pendentes.length;
 
   return (

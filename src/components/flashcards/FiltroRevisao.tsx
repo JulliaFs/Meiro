@@ -39,6 +39,7 @@ export function FiltroRevisaoBar({
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-text-muted">Pendentes hoje por assunto</p>
       <div className="flex gap-2 flex-wrap">
         <button className={chip(filtro.assunto === "todos")} onClick={() => onChange({ ...filtro, assunto: "todos", cap: 0 })}>
           Todos <span className="opacity-70">{pendentes.length}</span>
