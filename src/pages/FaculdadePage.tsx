@@ -114,6 +114,8 @@ export default function FaculdadePage() {
   }, [pendingAction, anos, anoSelecionado, setPendingAction]);
 
   function progressoFase(faseId: string) {
+    // fase marcada como concluída conta 100%, mesmo sem capítulos cadastrados
+    if (fases?.find((f) => f.id === faseId)?.status === "concluida") return 100;
     const caps = capitulos?.filter((c) => c.faseId === faseId) ?? [];
     if (caps.length === 0) return 0;
     return Math.round((caps.filter((c) => c.status === "concluido").length / caps.length) * 100);
