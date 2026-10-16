@@ -1,11 +1,14 @@
-// Gera supabase/seeds/reforco-fases-4-6.sql: trilhas de reforço das Fases 4, 5 e 6
-// (anotação "o essencial" ligada à fase, meta com micro-passos sem prazo e flashcards).
+// Gera supabase/seeds/reforco-fases-4-6.sql: revisão das Fases 1 a 3 e trilhas de reforço
+// das Fases 4, 5 e 6 (anotação ligada à fase, meta com micro-passos sem prazo e flashcards).
 // Os recursos dessas trilhas entram pelo scripts/seed-recursos.mjs.
 // Uso: node scripts/seed-reforco.mjs <email-da-conta-no-meiro>
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { trilhas } from "./conteudo/reforco-fases-4-6.mjs";
+import { trilhas as reforcos } from "./conteudo/reforco-fases-4-6.mjs";
+import { revisoes } from "./conteudo/revisao-fases-1-3.mjs";
+
+const trilhas = [...revisoes, ...reforcos];
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const email = process.argv[2];
@@ -17,20 +20,24 @@ const q = (v) => `'${String(v).replace(/'/g, "''")}'`;
 
 const blocos = trilhas
   .map((t) => {
-    const titulo = `🌱 Reforço Fase ${t.fase}: o essencial`;
-    const meta = `Reforço Fase ${t.fase} · ${t.tema.replace(/^Reforço: /, "")}`;
-    const categoria = `Reforço Fase ${t.fase} · ${t.tema.replace(/^Reforço: /, "")}`;
-    const checklist = JSON.stringify(t.passos.map((texto, i) => ({ id: `rf${t.fase}-${i + 1}`, texto, feito: false })));
+    const titulo = t.titulo ?? `🌱 Reforço Fase ${t.fase}: o essencial`;
+    const meta = t.tema ? `Reforço Fase ${t.fase} · ${t.tema.replace(/^Reforço: /, "")}` : null;
+    const categoria = t.categoria ?? `Reforço Fase ${t.fase} · ${t.tema.replace(/^Reforço: /, "")}`;
+    const checklist = JSON.stringify((t.passos ?? []).map((texto, i) => ({ id: `rf${t.fase}-${i + 1}`, texto, feito: false })));
     return `
   -- Fase ${t.fase}
   select id, ano_id into f, a from public.fases where user_id = uid and numero = ${t.fase} order by created_at limit 1;
   insert into public.anotacoes (user_id, titulo, conteudo, tags, fase_id, ano_id, origem_label)
-  select uid, ${q(titulo)}, ${q(t.essencial)}, array['reforço'], f, a, ${q(`Fase ${t.fase}`)}
+  select uid, ${q(titulo)}, ${q(t.essencial)}, array[${q(t.tema ? "reforço" : "revisão")}], f, a, ${q(`Fase ${t.fase}`)}
   where not exists (select 1 from public.anotacoes where user_id = uid and titulo = ${q(titulo)});
-
+${
+  meta
+    ? `
   insert into public.metas (user_id, descricao, categoria, checklist)
   select uid, ${q(meta)}, 'mensal', ${q(checklist)}::jsonb
-  where not exists (select 1 from public.metas where user_id = uid and descricao = ${q(meta)});
+  where not exists (select 1 from public.metas where user_id = uid and descricao = ${q(meta)});`
+    : ""
+}
 ${
   t.flashcards.length
     ? `
