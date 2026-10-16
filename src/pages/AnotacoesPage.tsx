@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, ArrowUpRight, NotebookPen, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowUpRight, NotebookPen, ArrowLeft, ChevronRight } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -12,6 +12,12 @@ import { textoPlano } from "../lib/anotacaoConteudo";
 import { useUiStore } from "../store/useUiStore";
 import { cls, confirmar, formatDate, toIsoDate } from "../lib/utils";
 import type { Anotacao, AreaConhecimento } from "../types";
+
+// nota sem conteúdo próprio (vazia ou só o texto do modelo antigo)
+function notaVazia(conteudo: string): boolean {
+  const t = textoPlano(conteudo);
+  return !t || (t.includes("Escreva aqui em markdown") && t.length < 120);
+}
 
 // o editor de blocos é pesado: só carrega quando uma anotação é aberta
 const EditorBlocos = lazy(() => import("../components/anotacoes/EditorBlocos"));
@@ -56,45 +62,64 @@ function AnotacaoEditor({
   const [atual, update] = useAutoSave(anotacao, (patch) => anotacaoService.update(anotacao.id, patch));
   // texto cru das tags, para a vírgula não sumir enquanto se digita
   const [tagsTexto, setTagsTexto] = useState(anotacao.tags.join(", "));
+  const [propsAbertas, setPropsAbertas] = useState(false);
 
   return (
     <>
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <button className="btn btn-secondary sm:hidden" onClick={onVoltar}><ArrowLeft size={14} /></button>
-        <input className="input flex-1 font-semibold" value={atual.titulo} onChange={(e) => update({ titulo: e.target.value })} />
+      {/* barra de ações discreta */}
+      <div className="flex items-center gap-2 mb-2">
+        <button className="btn btn-secondary sm:hidden" onClick={onVoltar} aria-label="Voltar"><ArrowLeft size={14} /></button>
+        <span className="text-2xs text-text-muted truncate flex-1">Editada em {formatDate(anotacao.updatedAt)}</span>
         <BacklinkButton anotacao={atual} />
         <button className="btn btn-secondary text-red-500" onClick={onExcluir} aria-label="Excluir anotação">
           <Trash2 size={14} />
         </button>
       </div>
-      {atual.origemLabel && (
-        <p className="text-xs text-text-muted mb-2">
-          Origem: {atual.origemLabel} · Criada em {formatDate(atual.createdAt)} · Última edição {formatDate(anotacao.updatedAt)}
-        </p>
-      )}
-      <div className="flex gap-2 mb-3 flex-wrap">
-        <select className="input w-auto" value={atual.area ?? ""} onChange={(e) => update({ area: e.target.value }, true)}>
-          <option value="">Sem área</option>
-          {areas?.map((ar) => <option key={ar.id} value={ar.nome}>{ar.nome}</option>)}
-        </select>
-        <input className="input w-auto" placeholder="Pasta" value={atual.pasta ?? ""} onChange={(e) => update({ pasta: e.target.value })} />
-        <input
-          className="input w-auto"
-          placeholder="Tags (vírgula)"
-          value={tagsTexto}
-          onChange={(e) => {
-            setTagsTexto(e.target.value);
-            update({ tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) });
-          }}
-        />
+
+      {/* título grande, como no Notion */}
+      <input
+        className="w-full bg-transparent border-0 outline-none text-2xl sm:text-3xl font-bold text-text placeholder:text-text-muted/50 mb-1"
+        placeholder="Sem título"
+        value={atual.titulo}
+        onChange={(e) => update({ titulo: e.target.value })}
+      />
+
+      {/* propriedades recolhíveis: fechadas mostram só os chips */}
+      <div className="mb-3">
+        <button className="flex items-center gap-1.5 flex-wrap text-xs text-text-muted hover:text-text py-1" onClick={() => setPropsAbertas(!propsAbertas)} aria-expanded={propsAbertas}>
+          <ChevronRight size={14} className={cls("transition-transform", propsAbertas && "rotate-90")} />
+          <span>Propriedades</span>
+          {!propsAbertas && (
+            <>
+              {atual.origemLabel && <Badge>{atual.origemLabel}</Badge>}
+              {atual.area && <Badge>{atual.area}</Badge>}
+              {atual.pasta && <Badge>{atual.pasta}</Badge>}
+              {atual.tags.map((t) => <Badge key={t}>{t}</Badge>)}
+              {(atual.skills ?? []).map((sk) => <Badge key={sk} className="bg-brand-light text-brand">{sk}</Badge>)}
+            </>
+          )}
+        </button>
+        {propsAbertas && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 pl-5">
+            {atual.origemLabel && <p className="text-xs text-text-muted sm:col-span-3">Origem: {atual.origemLabel} · Criada em {formatDate(atual.createdAt)}</p>}
+            <select className="input" value={atual.area ?? ""} onChange={(e) => update({ area: e.target.value }, true)}>
+              <option value="">Sem área</option>
+              {areas?.map((ar) => <option key={ar.id} value={ar.nome}>{ar.nome}</option>)}
+            </select>
+            <input className="input" placeholder="Pasta" value={atual.pasta ?? ""} onChange={(e) => update({ pasta: e.target.value })} />
+            <input
+              className="input"
+              placeholder="Tags (vírgula)"
+              value={tagsTexto}
+              onChange={(e) => {
+                setTagsTexto(e.target.value);
+                update({ tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean) });
+              }}
+            />
+          </div>
+        )}
       </div>
-      {(atual.tags.length > 0 || (atual.skills ?? []).length > 0) && (
-        <div className="flex gap-1 mb-2 flex-wrap">
-          {atual.tags.map((t) => <Badge key={t}>{t}</Badge>)}
-          {(atual.skills ?? []).map((s) => <Badge key={s} className="bg-brand-light text-brand">{s}</Badge>)}
-        </div>
-      )}
-      <p className="text-2xs text-text-muted mb-1">Digite "/" para blocos (títulos, listas, toggle, código). Cole ou arraste imagens.</p>
+      <p className="text-2xs text-text-muted mb-1 hidden sm:block">Digite "/" para blocos (títulos, listas, toggle, código). Cole ou arraste imagens.</p>
       <Suspense fallback={<p className="text-sm text-text-muted animate-pulse">Abrindo editor…</p>}>
         <EditorBlocos conteudo={anotacao.conteudo} onChange={(json) => update({ conteudo: json })} />
       </Suspense>
@@ -133,7 +158,7 @@ export default function AnotacoesPage() {
       if (filtroSkill && !(a.skills ?? []).includes(filtroSkill)) return false;
       if (filtroData && toIsoDate(new Date(a.createdAt)) !== filtroData) return false;
       return true;
-    });
+    }).sort((x, y) => y.updatedAt.localeCompare(x.updatedAt));
   }, [anotacoes, busca, fasesDoAno, filtroAno, filtroFase, filtroCapitulo, filtroSkill, filtroData]);
 
   const atual = anotacoes?.find((a) => a.id === selecionada);
@@ -231,9 +256,12 @@ export default function AnotacoesPage() {
                 onClick={() => setSelecionada(a.id)}
                 className={`w-full text-left px-2 py-2 rounded-lg text-sm ${selecionada === a.id ? "bg-brand-light text-brand" : "hover:bg-surface-2"}`}
               >
-                <p className="truncate font-medium">{a.titulo}</p>
+                <p className="truncate font-medium flex items-center gap-1.5">
+                  <span className="truncate">{a.titulo || "Sem título"}</span>
+                  {notaVazia(a.conteudo) && <span className="text-2xs font-normal text-text-muted border border-border rounded px-1 shrink-0">vazia</span>}
+                </p>
                 {a.origemLabel && <p className="text-xs text-text-muted truncate">{a.origemLabel}</p>}
-                {textoPlano(a.conteudo) && <p className="text-xs text-text-muted line-clamp-2 mt-0.5">{textoPlano(a.conteudo).slice(0, 140)}</p>}
+                {!notaVazia(a.conteudo) && <p className="text-xs text-text-muted line-clamp-2 mt-0.5">{textoPlano(a.conteudo).slice(0, 140)}</p>}
                 <p className="text-[11px] text-text-muted">{formatDate(a.updatedAt)}</p>
               </button>
             ))}
