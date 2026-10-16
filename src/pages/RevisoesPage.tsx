@@ -4,7 +4,9 @@ import { Card, CardHeader } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
 import { StudyMode } from "../components/flashcards/StudyMode";
-import { estaVencido, montarFila, TAMANHOS_SESSAO } from "../lib/flashcards";
+import { aplicarFiltro, estaVencido, montarFila, TAMANHOS_SESSAO } from "../lib/flashcards";
+import { FiltroRevisaoBar } from "../components/flashcards/FiltroRevisao";
+import { useFiltroRevisao } from "../hooks/useFiltroRevisao";
 import { useFlashcards } from "../hooks/useLiveData";
 import { formatDate, todayIso } from "../lib/utils";
 import { CalendarClock, AlertTriangle, History } from "lucide-react";
@@ -30,16 +32,13 @@ export default function RevisoesPage() {
   const flashcards = useFlashcards();
   const hoje = todayIso();
   const [fila, setFila] = useState<Flashcard[] | null>(null);
-  const [categoria, setCategoria] = useState("todas");
+  const [filtro, setFiltro] = useFiltroRevisao();
   const [tamanho, setTamanho] = useState<number>(20);
 
-  const categorias = useMemo(
-    () => Array.from(new Set((flashcards ?? []).map((f) => f.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true })),
-    [flashcards]
-  );
+  const todosPendentes = useMemo(() => (flashcards ?? []).filter((c) => estaVencido(c, hoje)), [flashcards, hoje]);
 
   const { paraHoje, atrasados, futuras, historico, pendentes } = useMemo(() => {
-    const cards = (flashcards ?? []).filter((c) => categoria === "todas" || c.categoria === categoria);
+    const cards = aplicarFiltro(flashcards ?? [], filtro);
     return {
       // cartão nunca revisado também é "para hoje"
       paraHoje: cards.filter((c) => !c.proximaRevisao || c.proximaRevisao === hoje),
@@ -48,7 +47,7 @@ export default function RevisoesPage() {
       historico: cards.filter((c) => c.ultimaRevisao).sort((a, b) => (b.ultimaRevisao! < a.ultimaRevisao! ? -1 : 1)),
       pendentes: cards.filter((c) => estaVencido(c, hoje)),
     };
-  }, [flashcards, hoje, categoria]);
+  }, [flashcards, hoje, filtro]);
 
   const qtdSessao = tamanho > 0 ? Math.min(tamanho, pendentes.length) : pendentes.length;
 
@@ -60,21 +59,15 @@ export default function RevisoesPage() {
       </div>
 
       <Card>
-        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-          <label className="flex-1 min-w-0 text-sm">
-            <span className="text-text-muted text-xs">Categoria</span>
-            <select className="input mt-1" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
-              <option value="todas">Todas as categorias</option>
-              {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </label>
+        <FiltroRevisaoBar cards={flashcards ?? []} pendentes={todosPendentes} filtro={filtro} onChange={setFiltro} />
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3 mt-3">
           <label className="text-sm sm:w-40">
             <span className="text-text-muted text-xs">Cartões por sessão</span>
             <select className="input mt-1" value={tamanho} onChange={(e) => setTamanho(Number(e.target.value))}>
               {TAMANHOS_SESSAO.map((t) => <option key={t} value={t}>{t === 0 ? "Todos" : t}</option>)}
             </select>
           </label>
-          <button className="btn btn-primary justify-center" onClick={() => setFila(montarFila(pendentes, tamanho))} disabled={pendentes.length === 0}>
+          <button className="btn btn-primary justify-center sm:ml-auto" onClick={() => setFila(montarFila(pendentes, tamanho))} disabled={pendentes.length === 0}>
             <Play size={16} /> {pendentes.length > 0 ? `Revisar ${qtdSessao} de ${pendentes.length}` : "Nada para revisar"}
           </button>
         </div>
