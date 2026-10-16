@@ -198,3 +198,20 @@ body {
   font-weight: 600;
   letter-spacing: -0.035em;
 }
+
+/* ---------- Editor de anotações (BlockNote) ---------- */
+.editor-meiro .bn-container,
+.editor-meiro.bn-container {
+  --bn-colors-editor-background: transparent;
+  --bn-font-family: inherit;
+}
+.editor-meiro .bn-editor {
+  padding-inline: 28px 4px;
+  background: transparent;
+}
+.editor-meiro .bn-block-content[data-content-type="heading"] h1 { font-size: 1.6rem; }
+.editor-meiro .bn-block-content[data-content-type="heading"] h2 { font-size: 1.3rem; }
+.editor-meiro .bn-block-content[data-content-type="heading"] h3 { font-size: 1.1rem; }
+@media (min-width: 640px) {
+  .editor-meiro .bn-editor { padding-inline: 48px 16px; }
+}

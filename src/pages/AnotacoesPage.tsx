@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Eye, Pencil as PencilIcon, ArrowUpRight, NotebookPen, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowUpRight, NotebookPen, ArrowLeft } from "lucide-react";
 import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -8,10 +8,13 @@ import { FilterPopover } from "../components/common/FilterPopover";
 import { useAnotacoes, useAreas, useAnos, useFases, useCapitulos, useFase } from "../hooks/useLiveData";
 import { useAutoSave } from "../hooks/useAutoSave";
 import { anotacaoService } from "../services";
-import { markdownToHtml } from "../lib/markdown";
+import { textoPlano } from "../lib/anotacaoConteudo";
 import { useUiStore } from "../store/useUiStore";
 import { cls, confirmar, formatDate, toIsoDate } from "../lib/utils";
 import type { Anotacao, AreaConhecimento } from "../types";
+
+// o editor de blocos é pesado: só carrega quando uma anotação é aberta
+const EditorBlocos = lazy(() => import("../components/anotacoes/EditorBlocos"));
 
 function BacklinkButton({ anotacao }: { anotacao: Anotacao }) {
   const navigate = useNavigate();
@@ -50,7 +53,6 @@ function AnotacaoEditor({
   onVoltar: () => void;
   onExcluir: () => void;
 }) {
-  const [preview, setPreview] = useState(false);
   const [atual, update] = useAutoSave(anotacao, (patch) => anotacaoService.update(anotacao.id, patch));
   // texto cru das tags, para a vírgula não sumir enquanto se digita
   const [tagsTexto, setTagsTexto] = useState(anotacao.tags.join(", "));
@@ -60,10 +62,6 @@ function AnotacaoEditor({
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <button className="btn btn-secondary sm:hidden" onClick={onVoltar}><ArrowLeft size={14} /></button>
         <input className="input flex-1 font-semibold" value={atual.titulo} onChange={(e) => update({ titulo: e.target.value })} />
-        <button className="btn btn-secondary" onClick={() => setPreview(!preview)}>
-          {preview ? <PencilIcon size={14} /> : <Eye size={14} />}
-          {preview ? "Editar" : "Visualizar"}
-        </button>
         <BacklinkButton anotacao={atual} />
         <button className="btn btn-secondary text-red-500" onClick={onExcluir} aria-label="Excluir anotação">
           <Trash2 size={14} />
@@ -96,11 +94,10 @@ function AnotacaoEditor({
           {(atual.skills ?? []).map((s) => <Badge key={s} className="bg-brand-light text-brand">{s}</Badge>)}
         </div>
       )}
-      {preview ? (
-        <div className="flex-1 overflow-y-auto text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: markdownToHtml(atual.conteudo) }} />
-      ) : (
-        <textarea className="input flex-1 resize-none font-mono text-sm" value={atual.conteudo} onChange={(e) => update({ conteudo: e.target.value })} />
-      )}
+      <p className="text-2xs text-text-muted mb-1">Digite "/" para blocos (títulos, listas, toggle, código). Cole ou arraste imagens.</p>
+      <Suspense fallback={<p className="text-sm text-text-muted animate-pulse">Abrindo editor…</p>}>
+        <EditorBlocos conteudo={anotacao.conteudo} onChange={(json) => update({ conteudo: json })} />
+      </Suspense>
     </>
   );
 }
@@ -129,7 +126,7 @@ export default function AnotacoesPage() {
     // anotações antigas não gravavam o ano; cai para "a fase pertence ao ano"
     const fasesIds = new Set((fasesDoAno ?? []).map((f) => f.id));
     return (anotacoes ?? []).filter((a) => {
-      if (q && !a.titulo.toLowerCase().includes(q) && !a.tags.some((t) => t.toLowerCase().includes(q))) return false;
+      if (q && !a.titulo.toLowerCase().includes(q) && !a.tags.some((t) => t.toLowerCase().includes(q)) && !textoPlano(a.conteudo).toLowerCase().includes(q)) return false;
       if (filtroAno && a.anoId !== filtroAno && !(a.faseId && fasesIds.has(a.faseId))) return false;
       if (filtroFase && a.faseId !== filtroFase) return false;
       if (filtroCapitulo && a.origemId !== filtroCapitulo) return false;
@@ -145,7 +142,7 @@ export default function AnotacoesPage() {
     try {
       const a = await anotacaoService.create({
         titulo: "Nova anotação",
-        conteudo: "# Nova anotação\n\nEscreva aqui em **markdown**...\n\n- [ ] Tarefa 1\n- [ ] Tarefa 2",
+        conteudo: "",
         tags: [],
       });
       setSelecionada(a.id);
@@ -236,6 +233,7 @@ export default function AnotacoesPage() {
               >
                 <p className="truncate font-medium">{a.titulo}</p>
                 {a.origemLabel && <p className="text-xs text-text-muted truncate">{a.origemLabel}</p>}
+                {textoPlano(a.conteudo) && <p className="text-xs text-text-muted line-clamp-2 mt-0.5">{textoPlano(a.conteudo).slice(0, 140)}</p>}
                 <p className="text-[11px] text-text-muted">{formatDate(a.updatedAt)}</p>
               </button>
             ))}
