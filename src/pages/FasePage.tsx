@@ -7,6 +7,7 @@ import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Badge } from "../components/ui/Badge";
 import { CapituloDetailModal } from "../components/faculdade/CapituloDetailModal";
+import { useParamUrl } from "../hooks/useParamUrl";
 import { useCapitulos, useFase } from "../hooks/useLiveData";
 import { useEnvio } from "../hooks/useEnvio";
 import { capituloService, faseService } from "../services";
@@ -56,7 +57,7 @@ export default function FasePage() {
   const capitulos = useCapitulos(faseId);
   const [modalCapitulo, setModalCapitulo] = useState(false);
   // guarda só o id: o modal abre com a versão mais recente da lista
-  const [capituloAtivoId, setCapituloAtivoId] = useState<string | null>(null);
+  const [capituloAtivoId, setCapituloAtivoId] = useParamUrl("capitulo");
   const capituloAtivo = capitulos?.find((c) => c.id === capituloAtivoId);
 
   if (!fase) return null;

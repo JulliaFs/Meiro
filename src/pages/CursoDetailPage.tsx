@@ -6,6 +6,7 @@ import { ProgressBar } from "../components/ui/ProgressBar";
 import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { AulaDetailModal } from "../components/cursos/AulaDetailModal";
+import { useParamUrl } from "../hooks/useParamUrl";
 import { useAulas, useCurso, useModulos } from "../hooks/useLiveData";
 import { useEnvio } from "../hooks/useEnvio";
 import { aulaService, moduloService } from "../services";
@@ -62,7 +63,7 @@ function ModuloCard({ moduloId, nome, numero, cursoLabel, cursoId }: { moduloId:
   const aulas = useAulas(moduloId);
   const [modalAula, setModalAula] = useState(false);
   // guarda só o id: o modal abre com a versão mais recente da lista
-  const [aulaAtivaId, setAulaAtivaId] = useState<string | null>(null);
+  const [aulaAtivaId, setAulaAtivaId] = useParamUrl("aula");
   const aulaAtiva = aulas?.find((a) => a.id === aulaAtivaId);
 
   const total = aulas?.length ?? 0;

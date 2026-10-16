@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FileUp, Link as LinkIcon, Plus, Sparkles, Trash2, FileText, NotebookPen, Loader2, X } from "lucide-react";
+import { FileUp, Link as LinkIcon, Plus, Sparkles, Trash2, FileText, NotebookPen, Loader2, X, CircleDot, CalendarDays, Layers, Gauge, Tag } from "lucide-react";
+import { Propriedade, TituloPagina, inputPropriedade } from "../ui/Propriedade";
 import { Modal } from "../ui/Modal";
 import { Badge } from "../ui/Badge";
 import { SkillTagInput } from "../common/SkillTagInput";
@@ -80,40 +81,74 @@ export function CapituloDetailModal({
   }
 
   return (
-    <Modal open onClose={onClose} title={`Capítulo ${capitulo.numero} · ${capitulo.nome}`} wide>
-      <div className="space-y-3 mb-4">
-        <div className="grid grid-cols-2 gap-3">
-          <input className="input" placeholder="Nome do capítulo" value={capitulo.nome} onChange={(e) => update({ nome: e.target.value })} />
+    <Modal open onClose={onClose} title={`${faseLabel} / Cap. ${capitulo.numero}`} wide pagina>
+      {/* cabeçalho de página no estilo do Notion: ícone, título grande e propriedades */}
+      <div className="text-5xl mb-2 select-none" aria-hidden>{capitulo.status === "concluido" ? "✅" : capitulo.status === "em_andamento" ? "📖" : "📄"}</div>
+      <TituloPagina value={capitulo.nome} onChange={(nome) => update({ nome })} />
+
+      <div className="mb-4">
+        <Propriedade icon={CircleDot} label="Status">
           <select
             value={capitulo.status}
             onChange={(e) => update({ status: e.target.value as Status }, true)}
-            className={cls("badge border-0 outline-none cursor-pointer justify-self-start", statusColor(capitulo.status))}
+            className={cls("badge border-0 outline-none cursor-pointer mt-1", statusColor(capitulo.status))}
           >
             <option value="nao_iniciado">{statusLabel("nao_iniciado")}</option>
             <option value="em_andamento">{statusLabel("em_andamento")}</option>
             <option value="concluido">{statusLabel("concluido")}</option>
           </select>
-        </div>
-        <textarea className="input" placeholder="Descrição" value={capitulo.descricao ?? ""} onChange={(e) => update({ descricao: e.target.value })} />
-        <label className="text-xs text-text-muted block">
-          Data de estudo
+        </Propriedade>
+        <Propriedade icon={Layers} label="Fase">
+          <p className="px-2 py-1.5">{faseLabel} · Capítulo {capitulo.numero}</p>
+        </Propriedade>
+        <Propriedade icon={CalendarDays} label="Data de estudo">
           <input
             type="date"
-            className="input mt-1 w-auto"
+            className={cls(inputPropriedade, "max-w-48")}
             value={capitulo.dataEstudo ?? ""}
             onChange={(e) => update({ dataEstudo: e.target.value || undefined }, true)}
           />
-        </label>
+        </Propriedade>
+        <Propriedade icon={Gauge} label="Fast Test">
+          <input
+            type="number"
+            className={cls(inputPropriedade, "w-28")}
+            placeholder="Vazio"
+            value={capitulo.notaFastTest ?? ""}
+            onChange={(e) => update({ notaFastTest: numeroOuVazio(e.target.value) })}
+          />
+        </Propriedade>
+        <Propriedade icon={Tag} label="Skills">
+          {capitulo.skills.length > 0 ? (
+            <div className="flex gap-1 flex-wrap px-2 py-1.5">{capitulo.skills.map((sk) => <Badge key={sk}>{sk}</Badge>)}</div>
+          ) : (
+            <button className="px-2 py-1.5 text-text-muted/60 hover:text-text" onClick={() => setTab("skills")}>Vazio</button>
+          )}
+        </Propriedade>
       </div>
 
-      <div className="flex gap-1 flex-wrap mb-3 border-b border-border pb-3">
+      <textarea
+        className="w-full bg-transparent border-0 outline-none resize-none text-sm sm:text-base text-text placeholder:text-text-muted/60 mb-4"
+        rows={2}
+        placeholder="Adicionar uma descrição…"
+        value={capitulo.descricao ?? ""}
+        onChange={(e) => update({ descricao: e.target.value })}
+      />
+
+      <div className="flex items-center gap-1 flex-wrap border-b border-border mb-4">
         {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`btn ${tab === t ? "btn-primary" : "btn-secondary"}`}>
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={cls("px-3 py-2 text-sm -mb-px border-b-2 transition-colors", tab === t ? "border-brand text-text font-medium" : "border-transparent text-text-muted hover:text-text")}
+          >
             {t === "facil" ? "Modo fácil" : t === "materiais" ? "Materiais" : t === "desempenho" ? "Desempenho" : t === "aprendizado" ? "Aprendizado" : "Skills"}
           </button>
         ))}
-        <button className="btn btn-secondary ml-auto" onClick={() => setOpenIa(true)}><Sparkles size={14} /> Gerar Aula Completa</button>
-        <button className="btn btn-secondary" onClick={novaAnotacao}><NotebookPen size={14} /> Nova Anotação</button>
+        <div className="ml-auto flex gap-1 py-1">
+          <button className="text-xs text-text-muted hover:text-text hover:bg-surface-2 rounded-md px-2 py-1.5 flex items-center gap-1" onClick={() => setOpenIa(true)}><Sparkles size={13} /> Aula completa</button>
+          <button className="text-xs text-text-muted hover:text-text hover:bg-surface-2 rounded-md px-2 py-1.5 flex items-center gap-1" onClick={novaAnotacao}><NotebookPen size={13} /> Anotação</button>
+        </div>
       </div>
 
       {tab === "facil" && <ModoFacil capitulo={capitulo} update={update} />}
@@ -170,15 +205,6 @@ export function CapituloDetailModal({
       {tab === "desempenho" && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs text-text-muted">
-              Nota do Fast Test
-              <input
-                type="number"
-                className="input mt-1"
-                value={capitulo.notaFastTest ?? ""}
-                onChange={(e) => update({ notaFastTest: numeroOuVazio(e.target.value) })}
-              />
-            </label>
             <label className="text-xs text-text-muted">
               Nota de exercícios
               <input
