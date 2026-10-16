@@ -11,8 +11,10 @@ import { useAutoSave } from "../../hooks/useAutoSave";
 import { notificarSucesso } from "../../store/useToastStore";
 import { cls, confirmar, statusColor, statusLabel } from "../../lib/utils";
 import type { Capitulo, Dificuldade, Status } from "../../types";
+import { ModoFacil } from "./ModoFacil";
+import { lerLink } from "../../lib/links";
 
-const TABS = ["materiais", "desempenho", "aprendizado", "skills"] as const;
+const TABS = ["facil", "materiais", "desempenho", "aprendizado", "skills"] as const;
 type Tab = typeof TABS[number];
 
 function numeroOuVazio(valor: string): number | undefined {
@@ -30,7 +32,8 @@ export function CapituloDetailModal({
   anoId?: string;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>("materiais");
+  const temModoFacil = !!capituloInicial.resumo || /^[( |x)] /im.test(capituloInicial.principaisConceitos ?? "") || capituloInicial.links.length > 0;
+  const [tab, setTab] = useState<Tab>(temModoFacil ? "facil" : "materiais");
   const [openIa, setOpenIa] = useState(false);
   const [novoLink, setNovoLink] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -106,12 +109,14 @@ export function CapituloDetailModal({
       <div className="flex gap-1 flex-wrap mb-3 border-b border-border pb-3">
         {TABS.map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`btn ${tab === t ? "btn-primary" : "btn-secondary"}`}>
-            {t === "materiais" ? "Materiais" : t === "desempenho" ? "Desempenho" : t === "aprendizado" ? "Aprendizado" : "Skills"}
+            {t === "facil" ? "Modo fácil" : t === "materiais" ? "Materiais" : t === "desempenho" ? "Desempenho" : t === "aprendizado" ? "Aprendizado" : "Skills"}
           </button>
         ))}
         <button className="btn btn-secondary ml-auto" onClick={() => setOpenIa(true)}><Sparkles size={14} /> Gerar Aula Completa</button>
         <button className="btn btn-secondary" onClick={novaAnotacao}><NotebookPen size={14} /> Nova Anotação</button>
       </div>
+
+      {tab === "facil" && <ModoFacil capitulo={capitulo} update={update} />}
 
       {tab === "materiais" && (
         <div className="space-y-3">
@@ -150,8 +155,8 @@ export function CapituloDetailModal({
           <div className="flex flex-col gap-1">
             {capitulo.links.map((l, i) => (
               <div key={i} className="flex items-center gap-2">
-                <a href={l} target="_blank" rel="noreferrer" className="text-xs text-brand flex items-center gap-1 truncate">
-                  <LinkIcon size={12} className="shrink-0" /> {l}
+                <a href={lerLink(l).url} target="_blank" rel="noreferrer" className="text-xs text-brand flex items-center gap-1 truncate">
+                  <LinkIcon size={12} className="shrink-0" /> {lerLink(l).nome}
                 </a>
                 <button className="text-text-muted hover:text-red-500 shrink-0" onClick={() => removerLink(i)} aria-label="Remover link">
                   <X size={12} />
