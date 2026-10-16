@@ -125,7 +125,10 @@ export type TipoMaterial =
   | "link"
   | "certificado"
   | "docx"
-  | "imagem";
+  | "imagem"
+  | "ferramenta";
+
+export type StatusEstudo = "quero_ver" | "vendo" | "visto";
 
 export interface Material extends BaseEntity {
   titulo: string;
@@ -137,6 +140,7 @@ export interface Material extends BaseEntity {
   arquivoId?: string;
   url?: string;
   dataUpload: string;
+  statusEstudo?: StatusEstudo;
   // vínculo opcional com capítulo/aula de origem
   origemTipo?: "capitulo" | "aula";
   origemId?: string;

@@ -5,6 +5,7 @@ import { Badge } from "../components/ui/Badge";
 import { Modal } from "../components/ui/Modal";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ProfessorIaModal } from "../components/common/ProfessorIaModal";
+import { RecursosView } from "../components/biblioteca/RecursosView";
 import { useAreas, useMateriais } from "../hooks/useLiveData";
 import { arquivoService, criarMaterialComArquivo, excluirMaterial } from "../services";
 import { useEnvio } from "../hooks/useEnvio";
@@ -85,11 +86,13 @@ export default function BibliotecaPage() {
   const [iaMaterial, setIaMaterial] = useState<Material | null>(null);
   const [busca, setBusca] = useState("");
   const [filtroArea, setFiltroArea] = useState("todas");
+  const [aba, setAba] = useState<"recursos" | "arquivos">("recursos");
 
   const filtrados = useMemo(() => {
     const q = busca.toLowerCase();
     return (materiais ?? []).filter(
       (m) =>
+        (m.arquivoId || !m.url) &&
         (filtroArea === "todas" || m.area === filtroArea) &&
         (!q || m.titulo.toLowerCase().includes(q) || m.tags.some((t) => t.toLowerCase().includes(q)))
     );
@@ -132,11 +135,25 @@ export default function BibliotecaPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="page-title">Biblioteca</h1>
-          <p className="text-text-muted text-sm mt-1">Central única de conhecimento: PDFs, livros, vídeos, artigos e links.</p>
+          <p className="text-text-muted text-sm mt-1">Cursos, vídeos, artigos e ferramentas por tema, e seus arquivos.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setOpenUpload(true)}>
-          <Upload size={16} /> Adicionar material
-        </button>
+        {aba === "arquivos" && (
+          <button className="btn btn-primary" onClick={() => setOpenUpload(true)}>
+            <Upload size={16} /> Adicionar arquivo
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-1 border-b border-border">
+        {(["recursos", "arquivos"] as const).map((a) => (
+          <button
+            key={a}
+            onClick={() => setAba(a)}
+            className={`px-4 py-2 text-sm -mb-px border-b-2 ${aba === a ? "border-brand text-text font-medium" : "border-transparent text-text-muted"}`}
+          >
+            {a === "recursos" ? "Recursos para estudar" : "Arquivos"}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -144,13 +161,15 @@ export default function BibliotecaPage() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input className="input pl-9" placeholder="Buscar por título ou tag..." value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
-        <select className="input w-auto" value={filtroArea} onChange={(e) => setFiltroArea(e.target.value)}>
+        {aba === "arquivos" && <select className="input w-auto" value={filtroArea} onChange={(e) => setFiltroArea(e.target.value)}>
           <option value="todas">Todas as áreas</option>
           {areas?.map((a) => <option key={a.id} value={a.nome}>{a.nome}</option>)}
-        </select>
+        </select>}
       </div>
 
-      {filtrados.length === 0 && (
+      {aba === "recursos" && <RecursosView materiais={materiais ?? []} busca={busca} />}
+
+      {aba === "arquivos" && filtrados.length === 0 && (
         <EmptyState
           icon={<FileText size={24} />}
           title="Sua biblioteca está vazia"
@@ -159,7 +178,7 @@ export default function BibliotecaPage() {
         />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {aba === "arquivos" && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtrados.map((m) => {
           const Icon = iconFor(m.tipo);
           return (
@@ -188,7 +207,7 @@ export default function BibliotecaPage() {
             </Card>
           );
         })}
-      </div>
+      </div>}
 
       <Modal open={openUpload} onClose={() => setOpenUpload(false)} title="Adicionar material">
         <UploadForm onClose={() => setOpenUpload(false)} />
