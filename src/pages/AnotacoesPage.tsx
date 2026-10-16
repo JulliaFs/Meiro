@@ -13,6 +13,17 @@ import { useUiStore } from "../store/useUiStore";
 import { cls, confirmar, formatDate, toIsoDate } from "../lib/utils";
 import type { Anotacao, AreaConhecimento } from "../types";
 
+// chips sem repetição (área, pasta e tag costumam ter o mesmo texto)
+function chipsUnicos(valores: (string | undefined)[]): string[] {
+  const vistos = new Set<string>();
+  return valores.filter((v): v is string => {
+    const k = v?.trim().toLowerCase();
+    if (!k || vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  });
+}
+
 // nota sem conteúdo próprio (vazia ou só o texto do modelo antigo)
 function notaVazia(conteudo: string): boolean {
   const t = textoPlano(conteudo);
@@ -91,11 +102,8 @@ function AnotacaoEditor({
           <span>Propriedades</span>
           {!propsAbertas && (
             <>
-              {atual.origemLabel && <Badge>{atual.origemLabel}</Badge>}
-              {atual.area && <Badge>{atual.area}</Badge>}
-              {atual.pasta && <Badge>{atual.pasta}</Badge>}
-              {atual.tags.map((t) => <Badge key={t}>{t}</Badge>)}
-              {(atual.skills ?? []).map((sk) => <Badge key={sk} className="bg-brand-light text-brand">{sk}</Badge>)}
+              {chipsUnicos([atual.origemLabel, atual.area, atual.pasta, ...atual.tags]).map((t) => <Badge key={t}>{t}</Badge>)}
+              {chipsUnicos(atual.skills ?? []).map((sk) => <Badge key={sk} className="bg-brand-light text-brand">{sk}</Badge>)}
             </>
           )}
         </button>
