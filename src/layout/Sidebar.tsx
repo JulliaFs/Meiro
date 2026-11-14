@@ -18,6 +18,7 @@ import {
   LogOut,
   Sparkles,
   ChevronsUpDown,
+  Compass,
   X,
 } from "lucide-react";
 import { cls } from "../lib/utils";
@@ -42,6 +43,7 @@ const SECOES: { titulo: string; items: NavItem[] }[] = [
       { to: "/biblioteca", label: "Biblioteca", icon: Library },
       { to: "/anotacoes", label: "Anotações", icon: NotebookPen },
       { to: "/flashcards", label: "Flashcards", icon: Brain },
+      { to: "/estudio", label: "Estúdio", icon: Compass, adminOnly: true },
     ],
   },
   {
