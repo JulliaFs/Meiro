@@ -9,6 +9,7 @@ const LABELS: Record<string, string> = {
   biblioteca: "Biblioteca",
   anotacoes: "Anotações",
   flashcards: "Flashcards",
+  estudio: "Estúdio",
   certificados: "Certificados",
   revisoes: "Revisões",
   carreira: "Mapa de Carreira",

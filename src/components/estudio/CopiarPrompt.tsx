@@ -21,7 +21,7 @@ export function CopiarPrompt({ gerar, rotulo, desativado }: { gerar: () => strin
 
   return (
     <div className="space-y-2">
-      <button className="btn btn-primary" onClick={copiar} disabled={desativado}>
+      <button className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed" onClick={copiar} disabled={desativado} title={desativado ? "Escreva algo no campo acima primeiro" : undefined}>
         {copiado ? <Check size={16} /> : <Copy size={16} />}
         {copiado ? "Copiado! Cole no seu chat de IA" : rotulo}
       </button>
