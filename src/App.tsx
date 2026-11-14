@@ -19,6 +19,7 @@ import CarreiraPage from "./pages/CarreiraPage";
 import MetasPage from "./pages/MetasPage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import WaitlistPage from "./pages/WaitlistPage";
+import EstudioPage from "./pages/EstudioPage";
 import LandingPage from "./pages/LandingPage";
 import DefinirSenhaPage from "./pages/DefinirSenhaPage";
 import { Toaster } from "./components/ui/Toaster";
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />
             <Route element={<AdminRoute />}>
               <Route path="/waitlist" element={<WaitlistPage />} />
+              <Route path="/estudio" element={<EstudioPage />} />
             </Route>
           </Route>
         </Route>
